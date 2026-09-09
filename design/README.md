@@ -20,3 +20,10 @@ Shriftlar: Newsreader (sarlavha), Manrope (interfeys), IBM Plex Mono (texnik qiy
 
 Kvadrat qavsdagi barcha qiymatlar (`[NARX]`, `[+998 …]`, `[SERTIFIKAT]`) —
 mijozdan olinadigan real maʼlumot uchun oʻrin egallovchi.
+
+## Telefon uchun yengil koʻrinish
+
+`vafelkatkan-dizayn-mobil.html` — kanvas muharririsiz statik nusxa (~320 KB oʻrniga ~2.5 MB).
+Har bir artbord bir marta render qilinib, HTML sifatida olingan; sahifada bir vaqtda faqat
+bitta ekran koʻrsatiladi va u telefon eniga moslab masshtablanadi. Interaktivlik yoʻq —
+toʻliq bosiladigan versiya kanvasda qoladi.
