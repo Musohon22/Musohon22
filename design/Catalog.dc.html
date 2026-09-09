@@ -127,7 +127,7 @@
         </svg>
         <div style="line-height: 1;">
           <div style="font-family: Newsreader, Georgia, serif; font-size: 22px; font-weight: 600; color: #26201A;">Vafelka</div>
-          <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; color: #9C8E80; letter-spacing: .08em; margin-top: 3px;">VAFELKATKAN.UZ</div>
+          <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; color: #7A6C5E; letter-spacing: .08em; margin-top: 3px;">VAFELKATKAN.UZ</div>
         </div>
       </div>
       <nav style="display: flex; align-items: center; gap: 34px;">
@@ -143,8 +143,8 @@
 
   <!-- Yoʻlchi chiziq va sarlavha -->
   <div style="width: 1200px; margin: 0 auto; padding: 30px 0 0;">
-    <div style="display: flex; align-items: center; gap: 9px; font-size: 13px; color: #9C8E80;">
-      <a href="#" style="color: #9C8E80;">Bosh sahifa</a>
+    <div style="display: flex; align-items: center; gap: 9px; font-size: 13px; color: #7A6C5E;">
+      <a href="#" style="color: #7A6C5E;">Bosh sahifa</a>
       <span>/</span>
       <span style="color: #26201A; font-weight: 600;">Katalog</span>
     </div>
@@ -178,7 +178,7 @@
     <aside style="display: flex; flex-direction: column; gap: 26px;">
       <div style="background: #FFFFFF; border: 1px solid #E6DACA; border-radius: 16px; padding: 22px 20px;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-          <div style="font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #9C8E80;">Kategoriya</div>
+          <div style="font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #7A6C5E;">Kategoriya</div>
           <button class="btn-g" onClick="{{ clearAll }}" style="border: none; background: transparent; font-size: 12.5px; font-weight: 700; color: #C25A32; cursor: pointer; padding: 0;">Tozalash</button>
         </div>
         <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -188,14 +188,14 @@
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFF7EC" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="{{ c.op }}"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
               </span>
               <span style="font-size: 14.5px; color: #26201A; flex-grow: 1;">{{ c.label }}</span>
-              <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #9C8E80;">{{ c.n }}</span>
+              <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #7A6C5E;">{{ c.n }}</span>
             </label>
           </sc-for>
         </div>
       </div>
 
       <div style="background: #FFFFFF; border: 1px solid #E6DACA; border-radius: 16px; padding: 22px 20px;">
-        <div style="font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #9C8E80; margin-bottom: 16px;">Eni, sm</div>
+        <div style="font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #7A6C5E; margin-bottom: 16px;">Eni, sm</div>
         <div style="display: flex; flex-wrap: wrap; gap: 8px;">
           <sc-for list="{{ widths }}" as="w" hint-placeholder-count="6">
             <button class="chip" onClick="{{ w.pick }}" style="height: 38px; min-width: 58px; padding: 0 13px; border-radius: 10px; border: 1.5px solid {{ w.bd }}; background: {{ w.bg }}; color: {{ w.fg }}; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px;">{{ w.v }}</button>
@@ -204,7 +204,7 @@
       </div>
 
       <div style="background: #FFFFFF; border: 1px solid #E6DACA; border-radius: 16px; padding: 22px 20px;">
-        <div style="font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #9C8E80; margin-bottom: 16px;">Zichlik, g/m²</div>
+        <div style="font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #7A6C5E; margin-bottom: 16px;">Zichlik, g/m²</div>
         <div style="display: flex; flex-wrap: wrap; gap: 8px;">
           <sc-for list="{{ dens }}" as="d" hint-placeholder-count="6">
             <button class="chip" onClick="{{ d.pick }}" style="height: 38px; min-width: 58px; padding: 0 13px; border-radius: 10px; border: 1.5px solid {{ d.bd }}; background: {{ d.bg }}; color: {{ d.fg }}; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px;">{{ d.v }}</button>
@@ -221,11 +221,11 @@
 
     <div>
       <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 22px;">
-        <span style="font-size: 13px; color: #9C8E80;">Faol filtrlar:</span>
+        <span style="font-size: 13px; color: #7A6C5E;">Faol filtrlar:</span>
         <sc-for list="{{ active }}" as="a" hint-placeholder-count="2">
           <button class="chip" onClick="{{ a.drop }}" style="height: 34px; padding: 0 12px; border-radius: 999px; border: 1.5px solid #E0D2C0; background: #FFFFFF; color: #26201A; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
             {{ a.label }}
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9C8E80" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7A6C5E" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
           </button>
         </sc-for>
       </div>
@@ -245,7 +245,7 @@
               </div>
               <div style="padding: 18px;">
                 <h3 style="font-family: Newsreader, Georgia, serif; font-size: 19px; font-weight: 600; color: #26201A; line-height: 1.25;">{{ p.name }}</h3>
-                <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11.5px; color: #9C8E80; margin-top: 8px;">{{ p.spec }}</div>
+                <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11.5px; color: #7A6C5E; margin-top: 8px;">{{ p.spec }}</div>
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 16px; padding-top: 14px; border-top: 1px solid #F0E7DA;">
                   <span style="font-size: 14.5px; font-weight: 800; color: #26201A;">{{ p.price }}</span>
                   <span style="font-size: 11.5px; font-weight: 700; color: #4F6B45; background: #EDF2E9; border-radius: 6px; padding: 4px 9px;">{{ p.stock }}</span>
@@ -269,7 +269,7 @@
               </div>
               <div style="padding: 18px 0;">
                 <h3 style="font-family: Newsreader, Georgia, serif; font-size: 20px; font-weight: 600; color: #26201A;">{{ p.name }}</h3>
-                <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #9C8E80; margin-top: 8px;">{{ p.spec }}</div>
+                <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #7A6C5E; margin-top: 8px;">{{ p.spec }}</div>
               </div>
               <div style="padding-right: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 12px;">
                 <span style="font-size: 15px; font-weight: 800; color: #26201A;">{{ p.price }}</span>

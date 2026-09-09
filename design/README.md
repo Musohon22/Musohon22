@@ -15,7 +15,7 @@ Claude Design kanvasi uchun manba fayllar. Har bir `.dc.html` — kanvasdagi alo
 | `vafelkatkan-sayt-dizayni.html` | Yigʻilgan kanvas (chop etilgan versiya) |
 
 Dizayn yoʻnalishi: iliq paxta — fon `#FAF5EE`, blok `#F2E9DC`, toʻq `#2A211B`,
-aksent terrakota `#C25A32`, holat zaytun `#6F8F5F`.
+aksent terrakota `#C25A32`, holat zaytun `#6F8F5F`, muted matn `#7A6C5E` (WCAG AA).
 Shriftlar: Newsreader (sarlavha), Manrope (interfeys), IBM Plex Mono (texnik qiymatlar).
 
 Kvadrat qavsdagi barcha qiymatlar (`[NARX]`, `[+998 …]`, `[SERTIFIKAT]`) —
