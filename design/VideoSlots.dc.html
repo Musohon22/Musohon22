@@ -1,0 +1,324 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #FAF5EE;
+      color: #26201A;
+      font-family: Manrope, "Segoe UI", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    h1, h2, h3, h4, p, figure, blockquote { margin: 0; }
+    ul { margin: 0; padding: 0; list-style: none; }
+    a { color: #C25A32; text-decoration: none; transition: color .2s ease; }
+    a:hover { color: #A34823; }
+    input, select, textarea, button { font-family: inherit; font-size: inherit; color: inherit; }
+    ::selection { background: #F3D6C6; }
+
+    /* --- Vafel to'qima motivi: brendning imzo naqshi --- */
+    .waffle {
+      background-image:
+        repeating-linear-gradient(0deg, rgba(38,32,26,.055) 0 1px, transparent 1px 24px),
+        repeating-linear-gradient(90deg, rgba(38,32,26,.055) 0 1px, transparent 1px 24px);
+    }
+    .waffle-dark {
+      background-image:
+        repeating-linear-gradient(0deg, rgba(255,247,236,.07) 0 1px, transparent 1px 24px),
+        repeating-linear-gradient(90deg, rgba(255,247,236,.07) 0 1px, transparent 1px 24px);
+    }
+    .weave {
+      background-image:
+        repeating-linear-gradient(45deg, rgba(255,247,236,.06) 0 2px, transparent 2px 9px),
+        repeating-linear-gradient(-45deg, rgba(255,247,236,.05) 0 2px, transparent 2px 9px);
+    }
+
+    /* --- Tugmalar: barcha holatlar --- */
+    .btn {
+      position: relative; overflow: hidden; cursor: pointer;
+      transition: transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .22s ease, filter .22s ease,
+                  background-color .22s ease, border-color .22s ease, color .22s ease;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn:active { transform: translateY(0) scale(.99); transition-duration: .06s; }
+    .btn:focus-visible { outline: 3px solid rgba(194,90,50,.38); outline-offset: 3px; }
+    .btn-p:hover { box-shadow: 0 14px 30px rgba(194,90,50,.34); filter: brightness(1.05) saturate(1.04); }
+    .btn-p::after {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(100deg, transparent 22%, rgba(255,255,255,.38) 46%, transparent 68%);
+      transform: translateX(-130%); transition: transform .7s cubic-bezier(.2,.7,.3,1);
+    }
+    .btn-p:hover::after { transform: translateX(130%); }
+    .btn-s:hover { background: #F2E9DC; border-color: #26201A; box-shadow: 0 8px 20px rgba(42,33,27,.10); }
+    .btn-d:hover { background: rgba(255,247,236,.10); border-color: rgba(255,247,236,.55); }
+    .btn-g:hover { color: #A34823; }
+    .btn-ico { transition: background-color .2s ease, color .2s ease, transform .18s ease, border-color .2s; }
+    .btn-ico:hover { background: #F2E9DC; transform: translateY(-2px); }
+
+    /* --- Kartalar --- */
+    .card { transition: transform .28s cubic-bezier(.2,.7,.3,1), box-shadow .28s ease, border-color .28s ease; }
+    .card:hover { transform: translateY(-5px); box-shadow: 0 22px 50px rgba(42,33,27,.15); border-color: #D6C6B2; }
+    .card:hover .zoom { transform: scale(1.06); }
+    .card:hover .rev { opacity: 1; transform: translateY(0); }
+    .zoom { transition: transform .55s cubic-bezier(.2,.7,.3,1); }
+    .rev { opacity: 0; transform: translateY(10px); transition: opacity .3s ease, transform .3s ease; }
+
+    /* --- Navigatsiya --- */
+    .nav-l { position: relative; }
+    .nav-l::after {
+      content: ""; position: absolute; left: 0; bottom: -7px; height: 2px; width: 100%;
+      background: #C25A32; transform: scaleX(0); transform-origin: left;
+      transition: transform .3s cubic-bezier(.2,.7,.3,1);
+    }
+    .nav-l:hover::after { transform: scaleX(1); }
+
+    /* --- Chip / filtr --- */
+    .chip { transition: background-color .2s ease, color .2s ease, border-color .2s ease, transform .16s ease, box-shadow .2s; cursor: pointer; }
+    .chip:hover { transform: translateY(-1px); border-color: #C25A32; color: #A34823; }
+
+    /* --- Maydonlar --- */
+    .fld { transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease; }
+    .fld:focus { outline: none; border-color: #C25A32; box-shadow: 0 0 0 4px rgba(194,90,50,.16); background: #FFFFFF; }
+    .fld-d:focus { border-color: #E8A585; box-shadow: 0 0 0 4px rgba(232,165,133,.20); }
+
+    /* --- Video sloti --- */
+    .vslot { position: relative; overflow: hidden; transition: transform .3s cubic-bezier(.2,.7,.3,1), box-shadow .3s ease, outline-color .2s ease; }
+    .vslot:hover { transform: translateY(-4px); box-shadow: 0 26px 56px rgba(42,33,27,.28); }
+    .vslot:hover .play { transform: scale(1.08); background: #C25A32; color: #FFF7EC; }
+    .vslot:hover .vmeta { opacity: 1; transform: translateY(0); }
+    .play { transition: transform .28s cubic-bezier(.2,.7,.3,1), background-color .25s ease, color .25s ease; }
+    .vmeta { opacity: .0; transform: translateY(8px); transition: opacity .3s ease, transform .3s ease; }
+
+    /* --- Harakat --- */
+    .rise { opacity: 0; transform: translateY(16px); animation: rise .8s cubic-bezier(.2,.7,.3,1) forwards; }
+    @keyframes rise { to { opacity: 1; transform: none; } }
+    .pulse { animation: pulse 1.9s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.8); } }
+    .marq { display: flex; gap: 64px; width: max-content; animation: marq 32s linear infinite; }
+    @keyframes marq { to { transform: translateX(-50%); } }
+    .shimmer {
+      background: linear-gradient(100deg, rgba(255,247,236,.04) 30%, rgba(255,247,236,.12) 50%, rgba(255,247,236,.04) 70%);
+      background-size: 220% 100%; animation: shimmer 3.4s linear infinite;
+    }
+    @keyframes shimmer { to { background-position: -220% 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .rise, .pulse, .marq, .shimmer { animation: none; opacity: 1; transform: none; }
+    }
+  </style>
+</helmet>
+<div style="width: 1200px; background: #FAF5EE; padding: 56px 56px 64px;">
+
+  <div style="display: flex; align-items: flex-end; justify-content: space-between; padding-bottom: 26px; border-bottom: 2px solid #26201A;">
+    <div>
+      <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11.5px; letter-spacing: .13em; color: #9C8E80;">VAFELKATKAN.UZ · VIDEO XARITASI</div>
+      <h1 style="font-family: Newsreader, Georgia, serif; font-size: 50px; line-height: 1.03; font-weight: 500; letter-spacing: -0.025em; color: #26201A; margin-top: 14px;">Tezkor videolar uchun joylar</h1>
+    </div>
+    <p style="font-size: 15px; line-height: 1.6; color: #6C5F53; max-width: 400px; text-align: right;">Saytda videoning 6 ta aniq oʻrni bor. Har biri uchun oʻlcham, davomiylik, format va xatti-harakat qatʼiy belgilangan.</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-top: 40px;">
+
+    <!-- 01 -->
+    <div class="card" style="background: #FFFFFF; border: 1px solid #E6DACA; border-radius: 18px; padding: 26px; display: grid; grid-template-columns: 148px minmax(0, 1fr); gap: 22px;">
+      <div>
+        <div class="weave" style="width: 148px; height: 185px; border-radius: 12px; background-color: #2A211B; background-image: linear-gradient(160deg, #3A2C23, #241C16); position: relative;">
+          <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><svg width="26" height="26" viewBox="0 0 24 24" fill="rgba(255,247,236,.8)"><path d="M7 4.5l13 7.5-13 7.5z"/></svg></div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; color: #9C8E80; margin-top: 9px; text-align: center;">4:5 · 1080×1350</div>
+      </div>
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">01</span>
+          <h3 style="font-family: Newsreader, Georgia, serif; font-size: 23px; font-weight: 600; color: #26201A;">Hero videosi</h3>
+        </div>
+        <p style="font-size: 14px; line-height: 1.6; color: #6C5F53; margin-top: 10px;">Bosh sahifaning oʻng ustunida. Dastgoh ishlayotgan kadr — birinchi ekranda zavod jonli ekanini koʻrsatadi.</p>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 16px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #6C5F53;">
+          <div>davomiylik &nbsp;<span style="color: #26201A;">10–14 s · loop</span></div>
+          <div>ovoz &nbsp;<span style="color: #26201A;">oʻchiq, tugma bilan yoqiladi</span></div>
+          <div>yuklanish &nbsp;<span style="color: #26201A;">poster.jpg → video (lazy)</span></div>
+          <div>hajm &nbsp;<span style="color: #26201A;">&lt; 4 MB</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 02 -->
+    <div class="card" style="background: #FFFFFF; border: 1px solid #E6DACA; border-radius: 18px; padding: 26px; display: grid; grid-template-columns: 148px minmax(0, 1fr); gap: 22px;">
+      <div>
+        <div style="display: flex; gap: 5px;">
+          <div class="weave" style="width: 44px; height: 185px; border-radius: 8px; background-color: #241C16; border: 2px solid #C25A32;"></div>
+          <div class="weave" style="width: 44px; height: 185px; border-radius: 8px; background-color: #241C16; opacity: .6;"></div>
+          <div class="weave" style="width: 44px; height: 185px; border-radius: 8px; background-color: #241C16; opacity: .4;"></div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; color: #9C8E80; margin-top: 9px; text-align: center;">9:16 · 1080×1920</div>
+      </div>
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">02</span>
+          <h3 style="font-family: Newsreader, Georgia, serif; font-size: 23px; font-weight: 600; color: #26201A;">Tezkor videolar lentasi</h3>
+        </div>
+        <p style="font-size: 14px; line-height: 1.6; color: #6C5F53; margin-top: 10px;">Toʻq blokda 5 ta vertikal kadr: toʻquv, oqartirish, nazorat, tikish, qadoqlash. Bosilganda toʻliq ekranga ochiladi.</p>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 16px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #6C5F53;">
+          <div>davomiylik &nbsp;<span style="color: #26201A;">6–10 s · loop</span></div>
+          <div>soni &nbsp;<span style="color: #26201A;">5 ta (kengaytiriladi)</span></div>
+          <div>avtoijro &nbsp;<span style="color: #26201A;">faqat faol kadr</span></div>
+          <div>hajm &nbsp;<span style="color: #26201A;">&lt; 3 MB / dona</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 03 -->
+    <div class="card" style="background: #FFFFFF; border: 1px solid #E6DACA; border-radius: 18px; padding: 26px; display: grid; grid-template-columns: 148px minmax(0, 1fr); gap: 22px;">
+      <div>
+        <div style="width: 148px; height: 148px; border-radius: 12px; background: #F2E9DC; border: 1px solid #E6DACA; position: relative; overflow: hidden;">
+          <div style="position: absolute; inset: 0; background-image: repeating-linear-gradient(45deg, rgba(38,32,26,.06) 0 6px, transparent 6px 16px);"></div>
+          <div style="position: absolute; bottom: 10px; left: 10px; background: rgba(38,32,26,.72); border-radius: 6px; padding: 4px 8px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 9px; color: #FFF7EC;">HOVER 4s</div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; color: #9C8E80; margin-top: 9px; text-align: center;">1:1 · 720×720</div>
+      </div>
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">03</span>
+          <h3 style="font-family: Newsreader, Georgia, serif; font-size: 23px; font-weight: 600; color: #26201A;">Karta ustidagi mikro-video</h3>
+        </div>
+        <p style="font-size: 14px; line-height: 1.6; color: #6C5F53; margin-top: 10px;">Mahsulot kartasiga kursor kelganda foto oʻrniga toʻqima harakati oʻynaydi. Katalogda ham, bosh sahifada ham bir xil.</p>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 16px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #6C5F53;">
+          <div>davomiylik &nbsp;<span style="color: #26201A;">3–4 s · loop</span></div>
+          <div>ishga tushishi &nbsp;<span style="color: #26201A;">hover / mobilda koʻrinsa</span></div>
+          <div>ovoz &nbsp;<span style="color: #26201A;">yoʻq</span></div>
+          <div>hajm &nbsp;<span style="color: #26201A;">&lt; 1.2 MB</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 04 -->
+    <div class="card" style="background: #FFFFFF; border: 1px solid #E6DACA; border-radius: 18px; padding: 26px; display: grid; grid-template-columns: 148px minmax(0, 1fr); gap: 22px;">
+      <div>
+        <div class="weave" style="width: 148px; height: 84px; border-radius: 10px; background-color: #2A211B; background-image: linear-gradient(120deg, #3A2C23, #241C16); position: relative;">
+          <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="rgba(255,247,236,.8)"><path d="M7 4.5l13 7.5-13 7.5z"/></svg></div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; color: #9C8E80; margin-top: 9px; text-align: center;">16:9 · 1920×1080</div>
+      </div>
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">04</span>
+          <h3 style="font-family: Newsreader, Georgia, serif; font-size: 23px; font-weight: 600; color: #26201A;">Fabrika turi</h3>
+        </div>
+        <p style="font-size: 14px; line-height: 1.6; color: #6C5F53; margin-top: 10px;">“Nega biz” blokidan keyin — bir daqiqalik toʻliq video. Yagona joy, u yerda ovoz va sarlavhalar boʻladi.</p>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 16px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #6C5F53;">
+          <div>davomiylik &nbsp;<span style="color: #26201A;">45–60 s</span></div>
+          <div>ishga tushishi &nbsp;<span style="color: #26201A;">faqat bosilganda</span></div>
+          <div>subtitr &nbsp;<span style="color: #26201A;">UZ / RU / EN</span></div>
+          <div>hajm &nbsp;<span style="color: #26201A;">&lt; 18 MB yoki tashqi pleyer</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 05 -->
+    <div class="card" style="background: #FFFFFF; border: 1px solid #E6DACA; border-radius: 18px; padding: 26px; display: grid; grid-template-columns: 148px minmax(0, 1fr); gap: 22px;">
+      <div>
+        <div style="width: 148px; height: 112px; border-radius: 10px; background: #F2E9DC; border: 1px solid #E6DACA;"></div>
+        <div style="display: flex; gap: 6px; margin-top: 6px;">
+          <div style="width: 32px; height: 26px; border-radius: 6px; background: #EFE6D8; border: 1px solid #E6DACA;"></div>
+          <div style="width: 32px; height: 26px; border-radius: 6px; background: #2A211B; border: 2px solid #C25A32;"></div>
+          <div style="width: 32px; height: 26px; border-radius: 6px; background: #2A211B;"></div>
+          <div style="width: 32px; height: 26px; border-radius: 6px; background: #EFE6D8; border: 1px solid #E6DACA;"></div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; color: #9C8E80; margin-top: 9px; text-align: center;">4:3 · 1440×1080</div>
+      </div>
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">05</span>
+          <h3 style="font-family: Newsreader, Georgia, serif; font-size: 23px; font-weight: 600; color: #26201A;">Mahsulot galereyasi</h3>
+        </div>
+        <p style="font-size: 14px; line-height: 1.6; color: #6C5F53; margin-top: 10px;">Mahsulot sahifasida fotolar bilan bitta qatorda: video eskizlari “VIDEO 8s” yorligʻi bilan ajratiladi.</p>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 16px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #6C5F53;">
+          <div>davomiylik &nbsp;<span style="color: #26201A;">8–12 s · loop</span></div>
+          <div>soni &nbsp;<span style="color: #26201A;">1–2 ta / mahsulot</span></div>
+          <div>mazmun &nbsp;<span style="color: #26201A;">toʻqima + suv yutish sinovi</span></div>
+          <div>hajm &nbsp;<span style="color: #26201A;">&lt; 3 MB</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 06 -->
+    <div class="card" style="background: #FFFFFF; border: 1px solid #E6DACA; border-radius: 18px; padding: 26px; display: grid; grid-template-columns: 148px minmax(0, 1fr); gap: 22px;">
+      <div>
+        <div class="weave" style="width: 104px; height: 185px; margin: 0 auto; border-radius: 14px; background-color: #1B1410; background-image: linear-gradient(170deg, #3A2C23, #1B1410); position: relative; border: 1px solid #DDCEBA;">
+          <div style="position: absolute; left: 10px; right: 10px; top: 10px; display: flex; gap: 3px;">
+            <div style="flex-grow: 1; height: 2px; background: #C25A32;"></div>
+            <div style="flex-grow: 1; height: 2px; background: rgba(255,247,236,.25);"></div>
+            <div style="flex-grow: 1; height: 2px; background: rgba(255,247,236,.25);"></div>
+          </div>
+          <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="rgba(255,247,236,.8)"><path d="M7 4.5l13 7.5-13 7.5z"/></svg></div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; color: #9C8E80; margin-top: 9px; text-align: center;">9:16 · toʻliq ekran</div>
+      </div>
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">06</span>
+          <h3 style="font-family: Newsreader, Georgia, serif; font-size: 23px; font-weight: 600; color: #26201A;">Mobil video lenta</h3>
+        </div>
+        <p style="font-size: 14px; line-height: 1.6; color: #6C5F53; margin-top: 10px;">Telefonlarda alohida ekran: vertikal svayp, har kadr ostida “Shu mahsulotni soʻrash” tugmasi.</p>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 16px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #6C5F53;">
+          <div>navigatsiya &nbsp;<span style="color: #26201A;">vertikal svayp</span></div>
+          <div>indikator &nbsp;<span style="color: #26201A;">yuqorida segment chiziq</span></div>
+          <div>CTA &nbsp;<span style="color: #26201A;">har kadrda, 44 px</span></div>
+          <div>trafik &nbsp;<span style="color: #26201A;">faqat koʻringanda yuklanadi</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ishlab chiqarish qoidalari -->
+  <div class="waffle-dark" style="margin-top: 34px; background-color: #241C16; border-radius: 20px; padding: 38px 40px;">
+    <h2 style="font-family: Newsreader, Georgia, serif; font-size: 30px; font-weight: 500; color: #FFF7EC; letter-spacing: -0.02em;">Videoni tayyorlash qoidalari</h2>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; margin-top: 28px;">
+      <div>
+        <div style="font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #E8A585; margin-bottom: 16px;">Suratga olish</div>
+        <div style="display: flex; flex-direction: column; gap: 11px; font-size: 14px; color: #D9CBBB; line-height: 1.55;">
+          <div>· Telefon vertikal, shtativda — silkinish boʻlmasin</div>
+          <div>· Tabiiy yorugʻlik yoki sexning oq chirogʻi</div>
+          <div>· Bitta harakat = bitta kadr (dastgoh, rulon, qaychi)</div>
+          <div>· Yaqin plan: toʻqima 30–50 sm masofadan</div>
+          <div>· Odam yuzi kadrga tushsa — roziligi bilan</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #E8A585; margin-bottom: 16px;">Fayl talablari</div>
+        <div style="display: flex; flex-direction: column; gap: 11px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12.5px; color: #D9CBBB; line-height: 1.55;">
+          <div>format &nbsp;<span style="color: #FFF7EC;">MP4 / H.264 + WebM</span></div>
+          <div>kadr &nbsp;<span style="color: #FFF7EC;">30 fps</span></div>
+          <div>bitreyt &nbsp;<span style="color: #FFF7EC;">2–3 Mbit/s</span></div>
+          <div>poster &nbsp;<span style="color: #FFF7EC;">.jpg, birinchi kadr</span></div>
+          <div>nom &nbsp;<span style="color: #FFF7EC;">reel-01-toquv-1080x1920.mp4</span></div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #E8A585; margin-bottom: 16px;">Sayt yuki</div>
+        <div style="display: flex; flex-direction: column; gap: 11px; font-size: 14px; color: #D9CBBB; line-height: 1.55;">
+          <div>· Birinchi ekranda faqat 1 ta video yuklanadi</div>
+          <div>· Qolganlari koʻrinish maydoniga kirganda</div>
+          <div>· Barchasi <b style="color: #FFF7EC;">muted + playsinline</b></div>
+          <div>· Sekin internetda video oʻrniga poster qoladi</div>
+          <div>· Umumiy sahifa vazni: <b style="color: #FFF7EC;">&lt; 3 MB</b> (videosiz)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{ "$preview": { "width": 1200, "height": 1560 } }'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

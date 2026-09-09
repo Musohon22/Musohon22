@@ -1,0 +1,379 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #FAF5EE;
+      color: #26201A;
+      font-family: Manrope, "Segoe UI", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    h1, h2, h3, h4, p, figure, blockquote { margin: 0; }
+    ul { margin: 0; padding: 0; list-style: none; }
+    a { color: #C25A32; text-decoration: none; transition: color .2s ease; }
+    a:hover { color: #A34823; }
+    input, select, textarea, button { font-family: inherit; font-size: inherit; color: inherit; }
+    ::selection { background: #F3D6C6; }
+
+    /* --- Vafel to'qima motivi: brendning imzo naqshi --- */
+    .waffle {
+      background-image:
+        repeating-linear-gradient(0deg, rgba(38,32,26,.055) 0 1px, transparent 1px 24px),
+        repeating-linear-gradient(90deg, rgba(38,32,26,.055) 0 1px, transparent 1px 24px);
+    }
+    .waffle-dark {
+      background-image:
+        repeating-linear-gradient(0deg, rgba(255,247,236,.07) 0 1px, transparent 1px 24px),
+        repeating-linear-gradient(90deg, rgba(255,247,236,.07) 0 1px, transparent 1px 24px);
+    }
+    .weave {
+      background-image:
+        repeating-linear-gradient(45deg, rgba(255,247,236,.06) 0 2px, transparent 2px 9px),
+        repeating-linear-gradient(-45deg, rgba(255,247,236,.05) 0 2px, transparent 2px 9px);
+    }
+
+    /* --- Tugmalar: barcha holatlar --- */
+    .btn {
+      position: relative; overflow: hidden; cursor: pointer;
+      transition: transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .22s ease, filter .22s ease,
+                  background-color .22s ease, border-color .22s ease, color .22s ease;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn:active { transform: translateY(0) scale(.99); transition-duration: .06s; }
+    .btn:focus-visible { outline: 3px solid rgba(194,90,50,.38); outline-offset: 3px; }
+    .btn-p:hover { box-shadow: 0 14px 30px rgba(194,90,50,.34); filter: brightness(1.05) saturate(1.04); }
+    .btn-p::after {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(100deg, transparent 22%, rgba(255,255,255,.38) 46%, transparent 68%);
+      transform: translateX(-130%); transition: transform .7s cubic-bezier(.2,.7,.3,1);
+    }
+    .btn-p:hover::after { transform: translateX(130%); }
+    .btn-s:hover { background: #F2E9DC; border-color: #26201A; box-shadow: 0 8px 20px rgba(42,33,27,.10); }
+    .btn-d:hover { background: rgba(255,247,236,.10); border-color: rgba(255,247,236,.55); }
+    .btn-g:hover { color: #A34823; }
+    .btn-ico { transition: background-color .2s ease, color .2s ease, transform .18s ease, border-color .2s; }
+    .btn-ico:hover { background: #F2E9DC; transform: translateY(-2px); }
+
+    /* --- Kartalar --- */
+    .card { transition: transform .28s cubic-bezier(.2,.7,.3,1), box-shadow .28s ease, border-color .28s ease; }
+    .card:hover { transform: translateY(-5px); box-shadow: 0 22px 50px rgba(42,33,27,.15); border-color: #D6C6B2; }
+    .card:hover .zoom { transform: scale(1.06); }
+    .card:hover .rev { opacity: 1; transform: translateY(0); }
+    .zoom { transition: transform .55s cubic-bezier(.2,.7,.3,1); }
+    .rev { opacity: 0; transform: translateY(10px); transition: opacity .3s ease, transform .3s ease; }
+
+    /* --- Navigatsiya --- */
+    .nav-l { position: relative; }
+    .nav-l::after {
+      content: ""; position: absolute; left: 0; bottom: -7px; height: 2px; width: 100%;
+      background: #C25A32; transform: scaleX(0); transform-origin: left;
+      transition: transform .3s cubic-bezier(.2,.7,.3,1);
+    }
+    .nav-l:hover::after { transform: scaleX(1); }
+
+    /* --- Chip / filtr --- */
+    .chip { transition: background-color .2s ease, color .2s ease, border-color .2s ease, transform .16s ease, box-shadow .2s; cursor: pointer; }
+    .chip:hover { transform: translateY(-1px); border-color: #C25A32; color: #A34823; }
+
+    /* --- Maydonlar --- */
+    .fld { transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease; }
+    .fld:focus { outline: none; border-color: #C25A32; box-shadow: 0 0 0 4px rgba(194,90,50,.16); background: #FFFFFF; }
+    .fld-d:focus { border-color: #E8A585; box-shadow: 0 0 0 4px rgba(232,165,133,.20); }
+
+    /* --- Video sloti --- */
+    .vslot { position: relative; overflow: hidden; transition: transform .3s cubic-bezier(.2,.7,.3,1), box-shadow .3s ease, outline-color .2s ease; }
+    .vslot:hover { transform: translateY(-4px); box-shadow: 0 26px 56px rgba(42,33,27,.28); }
+    .vslot:hover .play { transform: scale(1.08); background: #C25A32; color: #FFF7EC; }
+    .vslot:hover .vmeta { opacity: 1; transform: translateY(0); }
+    .play { transition: transform .28s cubic-bezier(.2,.7,.3,1), background-color .25s ease, color .25s ease; }
+    .vmeta { opacity: .0; transform: translateY(8px); transition: opacity .3s ease, transform .3s ease; }
+
+    /* --- Harakat --- */
+    .rise { opacity: 0; transform: translateY(16px); animation: rise .8s cubic-bezier(.2,.7,.3,1) forwards; }
+    @keyframes rise { to { opacity: 1; transform: none; } }
+    .pulse { animation: pulse 1.9s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.8); } }
+    .marq { display: flex; gap: 64px; width: max-content; animation: marq 32s linear infinite; }
+    @keyframes marq { to { transform: translateX(-50%); } }
+    .shimmer {
+      background: linear-gradient(100deg, rgba(255,247,236,.04) 30%, rgba(255,247,236,.12) 50%, rgba(255,247,236,.04) 70%);
+      background-size: 220% 100%; animation: shimmer 3.4s linear infinite;
+    }
+    @keyframes shimmer { to { background-position: -220% 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .rise, .pulse, .marq, .shimmer { animation: none; opacity: 1; transform: none; }
+    }
+  </style>
+</helmet>
+<div style="width: 1440px; background: #FAF5EE; overflow: hidden;">
+
+  <!-- Sarlavha -->
+  <header style="height: 78px; background: #FAF5EE; border-bottom: 1px solid #E6DACA;">
+    <div style="width: 1200px; margin: 0 auto; height: 100%; display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 13px;">
+        <svg width="38" height="38" viewBox="0 0 38 38" fill="none" aria-hidden="true">
+          <rect x="0.5" y="0.5" width="37" height="37" rx="10" fill="#C25A32"/>
+          <path d="M9 13.5h20M9 19h20M9 24.5h20M13.5 9v20M19 9v20M24.5 9v20" stroke="#FFF7EC" stroke-width="1.6" stroke-linecap="round" opacity="0.9"/>
+        </svg>
+        <div style="line-height: 1;">
+          <div style="font-family: Newsreader, Georgia, serif; font-size: 22px; font-weight: 600; color: #26201A;">Vafelka</div>
+          <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; color: #9C8E80; letter-spacing: .08em; margin-top: 3px;">VAFELKATKAN.UZ</div>
+        </div>
+      </div>
+      <nav style="display: flex; align-items: center; gap: 34px;">
+        <a class="nav-l" href="#" style="color: #C25A32; font-size: 15px; font-weight: 700;">Mahsulotlar</a>
+        <a class="nav-l" href="#" style="color: #26201A; font-size: 15px; font-weight: 600;">Ishlab chiqarish</a>
+        <a class="nav-l" href="#" style="color: #26201A; font-size: 15px; font-weight: 600;">Sifat</a>
+        <a class="nav-l" href="#" style="color: #26201A; font-size: 15px; font-weight: 600;">Hamkorlik</a>
+        <a class="nav-l" href="#" style="color: #26201A; font-size: 15px; font-weight: 600;">Aloqa</a>
+      </nav>
+      <button class="btn btn-p" style="height: 46px; padding: 0 22px; border: none; border-radius: 11px; background: #C25A32; color: #FFF7EC; font-size: 14.5px; font-weight: 700; box-shadow: 0 6px 16px rgba(194,90,50,.26);">Narx soʻrash</button>
+    </div>
+  </header>
+
+  <!-- Yoʻlchi chiziq va sarlavha -->
+  <div style="width: 1200px; margin: 0 auto; padding: 30px 0 0;">
+    <div style="display: flex; align-items: center; gap: 9px; font-size: 13px; color: #9C8E80;">
+      <a href="#" style="color: #9C8E80;">Bosh sahifa</a>
+      <span>/</span>
+      <span style="color: #26201A; font-weight: 600;">Katalog</span>
+    </div>
+    <div style="display: flex; align-items: flex-end; justify-content: space-between; margin-top: 22px; padding-bottom: 26px; border-bottom: 1px solid #E6DACA;">
+      <div>
+        <h1 style="font-family: Newsreader, Georgia, serif; font-size: 50px; line-height: 1.04; font-weight: 500; letter-spacing: -0.024em; color: #26201A;">Katalog</h1>
+        <p style="font-size: 16px; color: #6C5F53; margin-top: 12px;">Vafel gazlama, sochiqlar va maxsus buyurtma — <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; color: #26201A;">{{ count }}</span> pozitsiya</p>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <select class="fld" style="height: 46px; padding: 0 14px; border: 1.5px solid #E0D2C0; border-radius: 11px; background: #FFFFFF; font-size: 14px; font-weight: 600;">
+          <option>Saralash: ommabop</option>
+          <option>Eni: kichikdan kattaga</option>
+          <option>Zichlik: pastdan yuqoriga</option>
+          <option>Yangi qoʻshilgan</option>
+        </select>
+        <div style="display: flex; gap: 4px; background: #F2E9DC; border-radius: 11px; padding: 4px;">
+          <button class="btn-ico" onClick="{{ setGrid }}" style="width: 40px; height: 38px; border-radius: 8px; border: none; background: {{ gridBg }}; color: {{ gridFg }}; display: flex; align-items: center; justify-content: center;" aria-label="Katak koʻrinish">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>
+          </button>
+          <button class="btn-ico" onClick="{{ setList }}" style="width: 40px; height: 38px; border-radius: 8px; border: none; background: {{ listBg }}; color: {{ listFg }}; display: flex; align-items: center; justify-content: center;" aria-label="Roʻyxat koʻrinish">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtr + natijalar -->
+  <div style="width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 264px minmax(0, 1fr); gap: 44px; padding: 34px 0 90px; align-items: start;">
+
+    <aside style="display: flex; flex-direction: column; gap: 26px;">
+      <div style="background: #FFFFFF; border: 1px solid #E6DACA; border-radius: 16px; padding: 22px 20px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+          <div style="font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #9C8E80;">Kategoriya</div>
+          <button class="btn-g" onClick="{{ clearAll }}" style="border: none; background: transparent; font-size: 12.5px; font-weight: 700; color: #C25A32; cursor: pointer; padding: 0;">Tozalash</button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <sc-for list="{{ cats }}" as="c" hint-placeholder-count="4">
+            <label onClick="{{ c.pick }}" style="display: flex; align-items: center; gap: 11px; cursor: pointer;">
+              <span style="width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid {{ c.bd }}; background: {{ c.bg }}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFF7EC" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="{{ c.op }}"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+              </span>
+              <span style="font-size: 14.5px; color: #26201A; flex-grow: 1;">{{ c.label }}</span>
+              <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #9C8E80;">{{ c.n }}</span>
+            </label>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="background: #FFFFFF; border: 1px solid #E6DACA; border-radius: 16px; padding: 22px 20px;">
+        <div style="font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #9C8E80; margin-bottom: 16px;">Eni, sm</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          <sc-for list="{{ widths }}" as="w" hint-placeholder-count="6">
+            <button class="chip" onClick="{{ w.pick }}" style="height: 38px; min-width: 58px; padding: 0 13px; border-radius: 10px; border: 1.5px solid {{ w.bd }}; background: {{ w.bg }}; color: {{ w.fg }}; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px;">{{ w.v }}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="background: #FFFFFF; border: 1px solid #E6DACA; border-radius: 16px; padding: 22px 20px;">
+        <div style="font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #9C8E80; margin-bottom: 16px;">Zichlik, g/m²</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          <sc-for list="{{ dens }}" as="d" hint-placeholder-count="6">
+            <button class="chip" onClick="{{ d.pick }}" style="height: 38px; min-width: 58px; padding: 0 13px; border-radius: 10px; border: 1.5px solid {{ d.bd }}; background: {{ d.bg }}; color: {{ d.fg }}; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px;">{{ d.v }}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div class="waffle-dark" style="background-color: #2A211B; border-radius: 16px; padding: 24px 22px;">
+        <div style="font-family: Newsreader, Georgia, serif; font-size: 21px; color: #FFF7EC; line-height: 1.3;">Kerakli format topilmadimi?</div>
+        <p style="font-size: 13.5px; color: #B9A897; margin-top: 10px; line-height: 1.55;">Maxsus eni va zichlikda toʻqiymiz.</p>
+        <button class="btn btn-p" style="width: 100%; height: 46px; margin-top: 18px; border: none; border-radius: 11px; background: #C25A32; color: #FFF7EC; font-size: 14px; font-weight: 700;">Texnik topshiriq yuborish</button>
+      </div>
+    </aside>
+
+    <div>
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 22px;">
+        <span style="font-size: 13px; color: #9C8E80;">Faol filtrlar:</span>
+        <sc-for list="{{ active }}" as="a" hint-placeholder-count="2">
+          <button class="chip" onClick="{{ a.drop }}" style="height: 34px; padding: 0 12px; border-radius: 999px; border: 1.5px solid #E0D2C0; background: #FFFFFF; color: #26201A; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+            {{ a.label }}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9C8E80" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </sc-for>
+      </div>
+
+      <!-- KATAK KOʻRINISH -->
+      <sc-if value="{{ isGrid }}" hint-placeholder-val="{{ true }}">
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px;">
+          <sc-for list="{{ items }}" as="p" hint-placeholder-count="9">
+            <article class="card" style="background: #FFFFFF; border: 1px solid #E6DACA; border-radius: 16px; overflow: hidden;">
+              <div class="waffle" style="position: relative; height: 200px; background-color: {{ p.tint }}; overflow: hidden;">
+                <div class="zoom" style="position: absolute; inset: 0; background-image: repeating-linear-gradient(45deg, rgba(38,32,26,.045) 0 6px, transparent 6px 16px);"></div>
+                <div style="position: absolute; top: 12px; left: 12px; display: flex; align-items: center; gap: 6px; background: rgba(38,32,26,.72); border-radius: 6px; padding: 4px 8px;">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="#FFF7EC"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>
+                  <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: .08em; color: #FFF7EC;">4s</span>
+                </div>
+                <div class="rev" style="position: absolute; left: 12px; right: 12px; bottom: 12px; background: rgba(255,247,236,.94); border-radius: 10px; padding: 9px 12px; font-size: 12.5px; font-weight: 700; color: #26201A; text-align: center;">Tez koʻrish</div>
+              </div>
+              <div style="padding: 18px;">
+                <h3 style="font-family: Newsreader, Georgia, serif; font-size: 19px; font-weight: 600; color: #26201A; line-height: 1.25;">{{ p.name }}</h3>
+                <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11.5px; color: #9C8E80; margin-top: 8px;">{{ p.spec }}</div>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 16px; padding-top: 14px; border-top: 1px solid #F0E7DA;">
+                  <span style="font-size: 14.5px; font-weight: 800; color: #26201A;">{{ p.price }}</span>
+                  <span style="font-size: 11.5px; font-weight: 700; color: #4F6B45; background: #EDF2E9; border-radius: 6px; padding: 4px 9px;">{{ p.stock }}</span>
+                </div>
+              </div>
+            </article>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <!-- ROʻYXAT KOʻRINISH -->
+      <sc-if value="{{ isList }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <sc-for list="{{ items }}" as="p" hint-placeholder-count="9">
+            <article class="card" style="background: #FFFFFF; border: 1px solid #E6DACA; border-radius: 16px; overflow: hidden; display: grid; grid-template-columns: 180px minmax(0, 1fr) 200px; gap: 24px; align-items: center;">
+              <div class="waffle" style="position: relative; height: 124px; background-color: {{ p.tint }};">
+                <div style="position: absolute; bottom: 10px; left: 10px; display: flex; align-items: center; gap: 6px; background: rgba(38,32,26,.72); border-radius: 6px; padding: 4px 8px;">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="#FFF7EC"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>
+                  <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 9px; color: #FFF7EC;">4s</span>
+                </div>
+              </div>
+              <div style="padding: 18px 0;">
+                <h3 style="font-family: Newsreader, Georgia, serif; font-size: 20px; font-weight: 600; color: #26201A;">{{ p.name }}</h3>
+                <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #9C8E80; margin-top: 8px;">{{ p.spec }}</div>
+              </div>
+              <div style="padding-right: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 12px;">
+                <span style="font-size: 15px; font-weight: 800; color: #26201A;">{{ p.price }}</span>
+                <button class="btn btn-s" style="height: 42px; padding: 0 18px; border: 1.5px solid #D6C6B2; border-radius: 10px; background: transparent; color: #26201A; font-size: 13.5px; font-weight: 700;">Soʻrov</button>
+              </div>
+            </article>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 46px;">
+        <button class="btn-ico" style="width: 44px; height: 44px; border-radius: 11px; border: 1px solid #E0D2C0; background: #FFFFFF; display: flex; align-items: center; justify-content: center;" aria-label="Oldingi">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6C5F53" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <button class="chip" style="width: 44px; height: 44px; border-radius: 11px; border: 1.5px solid #26201A; background: #26201A; color: #FFF7EC; font-size: 14px; font-weight: 700;">1</button>
+        <button class="chip" style="width: 44px; height: 44px; border-radius: 11px; border: 1.5px solid #E0D2C0; background: #FFFFFF; color: #26201A; font-size: 14px; font-weight: 700;">2</button>
+        <button class="chip" style="width: 44px; height: 44px; border-radius: 11px; border: 1.5px solid #E0D2C0; background: #FFFFFF; color: #26201A; font-size: 14px; font-weight: 700;">3</button>
+        <button class="btn-ico" style="width: 44px; height: 44px; border-radius: 11px; border: 1px solid #E0D2C0; background: #FFFFFF; display: flex; align-items: center; justify-content: center;" aria-label="Keyingi">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6C5F53" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{ "$preview": { "width": 1440, "height": 2560 } }'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { view: 'grid', cats: [0], w: [], d: [] };
+  }
+
+  toggle(key, v) {
+    const cur = this.state[key];
+    const next = cur.indexOf(v) === -1 ? cur.concat([v]) : cur.filter((x) => x !== v);
+    this.setState({ [key]: next });
+  }
+
+  renderVals() {
+    const st = this.state;
+    const catLabels = [
+      { label: 'Gazlama rulonlari', n: '18' },
+      { label: 'Oshxona sochiqlari', n: '12' },
+      { label: 'Hammom sochiqlari', n: '9' },
+      { label: 'Maxsus buyurtma', n: '6' }
+    ];
+    const cats = catLabels.map((c, i) => {
+      const on = st.cats.indexOf(i) !== -1;
+      return {
+        label: c.label, n: c.n,
+        bg: on ? '#C25A32' : '#FFFFFF',
+        bd: on ? '#C25A32' : '#D6C6B2',
+        op: on ? '1' : '0',
+        pick: () => this.toggle('cats', i)
+      };
+    });
+    const chip = (key) => (v) => {
+      const on = this.state[key].indexOf(v) !== -1;
+      return {
+        v,
+        bg: on ? '#C25A32' : '#FFFFFF',
+        fg: on ? '#FFF7EC' : '#26201A',
+        bd: on ? '#C25A32' : '#E0D2C0',
+        pick: () => this.toggle(key, v)
+      };
+    };
+
+    const active = []
+      .concat(st.cats.map((i) => ({ label: catLabels[i].label, drop: () => this.toggle('cats', i) })))
+      .concat(st.w.map((v) => ({ label: 'Eni ' + v + ' sm', drop: () => this.toggle('w', v) })))
+      .concat(st.d.map((v) => ({ label: v + ' g/m²', drop: () => this.toggle('d', v) })));
+
+    const base = [
+      { name: 'Vafel gazlama 45 sm', spec: 'EN 45 · 120 g/m²', price: '[NARX]/m', stock: 'Omborda', tint: '#F6EFE4' },
+      { name: 'Vafel gazlama 80 sm', spec: 'EN 80 · 150 g/m²', price: '[NARX]/m', stock: 'Omborda', tint: '#F2E9DC' },
+      { name: 'Vafel gazlama 100 sm', spec: 'EN 100 · 170 g/m²', price: '[NARX]/m', stock: 'Omborda', tint: '#EFE6D8' },
+      { name: 'Vafel gazlama 120 sm', spec: 'EN 120 · 180 g/m²', price: '[NARX]/m', stock: 'Omborda', tint: '#F6EFE4' },
+      { name: 'Vafel gazlama 150 sm', spec: 'EN 150 · 200 g/m²', price: '[NARX]/m', stock: 'Buyurtmaga', tint: '#F2E9DC' },
+      { name: 'Vafel gazlama 165 sm', spec: 'EN 165 · 220 g/m²', price: '[NARX]/m', stock: 'Buyurtmaga', tint: '#EFE6D8' },
+      { name: 'Xom vafel gazlama', spec: 'EN 80–150 · 90 g/m²', price: '[NARX]/m', stock: 'Omborda', tint: '#F6EFE4' },
+      { name: 'Oshxona sochigʻi 45×80', spec: '150 g/m² · 3 dona', price: '[NARX]/dona', stock: 'Omborda', tint: '#F2E9DC' },
+      { name: 'Hammom sochigʻi 70×140', spec: '200 g/m² · bordyurli', price: '[NARX]/dona', stock: 'Buyurtmaga', tint: '#EFE6D8' }
+    ];
+
+    return {
+      count: '45',
+      cats,
+      widths: [45, 80, 100, 120, 150, 165].map(chip('w')),
+      dens: [90, 120, 150, 170, 200, 220].map(chip('d')),
+      active,
+      clearAll: () => this.setState({ cats: [], w: [], d: [] }),
+      items: base,
+      isGrid: st.view === 'grid',
+      isList: st.view === 'list',
+      setGrid: () => this.setState({ view: 'grid' }),
+      setList: () => this.setState({ view: 'list' }),
+      gridBg: st.view === 'grid' ? '#26201A' : 'transparent',
+      gridFg: st.view === 'grid' ? '#FFF7EC' : '#6C5F53',
+      listBg: st.view === 'list' ? '#26201A' : 'transparent',
+      listFg: st.view === 'list' ? '#FFF7EC' : '#6C5F53'
+    };
+  }
+}
+</script>
+</body>
+</html>

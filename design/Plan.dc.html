@@ -1,0 +1,320 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #FAF5EE;
+      color: #26201A;
+      font-family: Manrope, "Segoe UI", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    h1, h2, h3, h4, p, figure, blockquote { margin: 0; }
+    ul { margin: 0; padding: 0; list-style: none; }
+    a { color: #C25A32; text-decoration: none; transition: color .2s ease; }
+    a:hover { color: #A34823; }
+    input, select, textarea, button { font-family: inherit; font-size: inherit; color: inherit; }
+    ::selection { background: #F3D6C6; }
+
+    /* --- Vafel to'qima motivi: brendning imzo naqshi --- */
+    .waffle {
+      background-image:
+        repeating-linear-gradient(0deg, rgba(38,32,26,.055) 0 1px, transparent 1px 24px),
+        repeating-linear-gradient(90deg, rgba(38,32,26,.055) 0 1px, transparent 1px 24px);
+    }
+    .waffle-dark {
+      background-image:
+        repeating-linear-gradient(0deg, rgba(255,247,236,.07) 0 1px, transparent 1px 24px),
+        repeating-linear-gradient(90deg, rgba(255,247,236,.07) 0 1px, transparent 1px 24px);
+    }
+    .weave {
+      background-image:
+        repeating-linear-gradient(45deg, rgba(255,247,236,.06) 0 2px, transparent 2px 9px),
+        repeating-linear-gradient(-45deg, rgba(255,247,236,.05) 0 2px, transparent 2px 9px);
+    }
+
+    /* --- Tugmalar: barcha holatlar --- */
+    .btn {
+      position: relative; overflow: hidden; cursor: pointer;
+      transition: transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .22s ease, filter .22s ease,
+                  background-color .22s ease, border-color .22s ease, color .22s ease;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn:active { transform: translateY(0) scale(.99); transition-duration: .06s; }
+    .btn:focus-visible { outline: 3px solid rgba(194,90,50,.38); outline-offset: 3px; }
+    .btn-p:hover { box-shadow: 0 14px 30px rgba(194,90,50,.34); filter: brightness(1.05) saturate(1.04); }
+    .btn-p::after {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(100deg, transparent 22%, rgba(255,255,255,.38) 46%, transparent 68%);
+      transform: translateX(-130%); transition: transform .7s cubic-bezier(.2,.7,.3,1);
+    }
+    .btn-p:hover::after { transform: translateX(130%); }
+    .btn-s:hover { background: #F2E9DC; border-color: #26201A; box-shadow: 0 8px 20px rgba(42,33,27,.10); }
+    .btn-d:hover { background: rgba(255,247,236,.10); border-color: rgba(255,247,236,.55); }
+    .btn-g:hover { color: #A34823; }
+    .btn-ico { transition: background-color .2s ease, color .2s ease, transform .18s ease, border-color .2s; }
+    .btn-ico:hover { background: #F2E9DC; transform: translateY(-2px); }
+
+    /* --- Kartalar --- */
+    .card { transition: transform .28s cubic-bezier(.2,.7,.3,1), box-shadow .28s ease, border-color .28s ease; }
+    .card:hover { transform: translateY(-5px); box-shadow: 0 22px 50px rgba(42,33,27,.15); border-color: #D6C6B2; }
+    .card:hover .zoom { transform: scale(1.06); }
+    .card:hover .rev { opacity: 1; transform: translateY(0); }
+    .zoom { transition: transform .55s cubic-bezier(.2,.7,.3,1); }
+    .rev { opacity: 0; transform: translateY(10px); transition: opacity .3s ease, transform .3s ease; }
+
+    /* --- Navigatsiya --- */
+    .nav-l { position: relative; }
+    .nav-l::after {
+      content: ""; position: absolute; left: 0; bottom: -7px; height: 2px; width: 100%;
+      background: #C25A32; transform: scaleX(0); transform-origin: left;
+      transition: transform .3s cubic-bezier(.2,.7,.3,1);
+    }
+    .nav-l:hover::after { transform: scaleX(1); }
+
+    /* --- Chip / filtr --- */
+    .chip { transition: background-color .2s ease, color .2s ease, border-color .2s ease, transform .16s ease, box-shadow .2s; cursor: pointer; }
+    .chip:hover { transform: translateY(-1px); border-color: #C25A32; color: #A34823; }
+
+    /* --- Maydonlar --- */
+    .fld { transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease; }
+    .fld:focus { outline: none; border-color: #C25A32; box-shadow: 0 0 0 4px rgba(194,90,50,.16); background: #FFFFFF; }
+    .fld-d:focus { border-color: #E8A585; box-shadow: 0 0 0 4px rgba(232,165,133,.20); }
+
+    /* --- Video sloti --- */
+    .vslot { position: relative; overflow: hidden; transition: transform .3s cubic-bezier(.2,.7,.3,1), box-shadow .3s ease, outline-color .2s ease; }
+    .vslot:hover { transform: translateY(-4px); box-shadow: 0 26px 56px rgba(42,33,27,.28); }
+    .vslot:hover .play { transform: scale(1.08); background: #C25A32; color: #FFF7EC; }
+    .vslot:hover .vmeta { opacity: 1; transform: translateY(0); }
+    .play { transition: transform .28s cubic-bezier(.2,.7,.3,1), background-color .25s ease, color .25s ease; }
+    .vmeta { opacity: .0; transform: translateY(8px); transition: opacity .3s ease, transform .3s ease; }
+
+    /* --- Harakat --- */
+    .rise { opacity: 0; transform: translateY(16px); animation: rise .8s cubic-bezier(.2,.7,.3,1) forwards; }
+    @keyframes rise { to { opacity: 1; transform: none; } }
+    .pulse { animation: pulse 1.9s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.8); } }
+    .marq { display: flex; gap: 64px; width: max-content; animation: marq 32s linear infinite; }
+    @keyframes marq { to { transform: translateX(-50%); } }
+    .shimmer {
+      background: linear-gradient(100deg, rgba(255,247,236,.04) 30%, rgba(255,247,236,.12) 50%, rgba(255,247,236,.04) 70%);
+      background-size: 220% 100%; animation: shimmer 3.4s linear infinite;
+    }
+    @keyframes shimmer { to { background-position: -220% 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .rise, .pulse, .marq, .shimmer { animation: none; opacity: 1; transform: none; }
+    }
+  </style>
+</helmet>
+<div style="width: 900px; background: #FFFDF9; padding: 64px 72px 72px;">
+
+  <div style="padding-bottom: 28px; border-bottom: 2px solid #26201A;">
+    <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11.5px; letter-spacing: .13em; color: #9C8E80;">VAFELKATKAN.UZ · REDIZAYN REJASI · 2026</div>
+    <h1 style="font-family: Newsreader, Georgia, serif; font-size: 46px; line-height: 1.05; font-weight: 500; letter-spacing: -0.025em; color: #26201A; margin-top: 14px;">Yangi sayt: aniq reja</h1>
+    <p style="font-size: 16px; line-height: 1.65; color: #6C5F53; margin-top: 14px;">Vafelka — Namangandagi vafel gazlama fabrikasi. Saytning vazifasi bitta: yirik xaridorni soʻrov qoldirishga olib kelish va zavod haqiqiy ishlab chiqaruvchi ekanini isbotlash.</p>
+  </div>
+
+  <section style="margin-top: 40px;">
+    <h2 style="font-family: Newsreader, Georgia, serif; font-size: 27px; font-weight: 600; color: #26201A;">1 · Kim uchun va nima uchun</h2>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 18px;">
+      <div style="background: #F7F1E8; border-radius: 12px; padding: 18px;">
+        <div style="font-size: 13.5px; font-weight: 800; color: #26201A;">Ulgurji xaridor</div>
+        <p style="font-size: 13.5px; line-height: 1.55; color: #6C5F53; margin-top: 7px;">Tonnalab gazlama oladi. Unga eni, zichlik, muddat va narx kerak.</p>
+      </div>
+      <div style="background: #F7F1E8; border-radius: 12px; padding: 18px;">
+        <div style="font-size: 13.5px; font-weight: 800; color: #26201A;">Tikuv sexi / HoReCa</div>
+        <p style="font-size: 13.5px; line-height: 1.55; color: #6C5F53; margin-top: 7px;">Tayyor sochiq va kichik partiyalar. Unga namuna va sifat isboti kerak.</p>
+      </div>
+      <div style="background: #F7F1E8; border-radius: 12px; padding: 18px;">
+        <div style="font-size: 13.5px; font-weight: 800; color: #26201A;">Eksport xaridori</div>
+        <p style="font-size: 13.5px; line-height: 1.55; color: #6C5F53; margin-top: 7px;">Ingliz/rus tili, quvvat raqamlari, hujjatlar va yetkazib berish shartlari.</p>
+      </div>
+    </div>
+    <p style="font-size: 15px; line-height: 1.7; color: #26201A; margin-top: 18px; padding: 16px 20px; background: #FBEDE5; border-radius: 12px;">
+      <b>Asosiy maqsadli harakat:</b> “Narx soʻrash” / “Namuna soʻrash”. Sahifada bitta asosiy tugma bir necha marta takrorlanadi — raqobatlashuvchi CTA yoʻq.
+    </p>
+  </section>
+
+  <section style="margin-top: 40px;">
+    <h2 style="font-family: Newsreader, Georgia, serif; font-size: 27px; font-weight: 600; color: #26201A;">2 · Sayt tuzilmasi</h2>
+    <div style="margin-top: 16px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; line-height: 2; color: #26201A; background: #F7F1E8; border-radius: 12px; padding: 22px 24px;">
+      / &nbsp;Bosh sahifa<br>
+      /katalog &nbsp;→ &nbsp;filtr: kategoriya, eni, zichlik<br>
+      /katalog/&lt;mahsulot&gt; &nbsp;→ &nbsp;galereya + video + spetsifikatsiya<br>
+      /ishlab-chiqarish &nbsp;→ &nbsp;sexlar, quvvat, video lenta<br>
+      /sifat &nbsp;→ &nbsp;nazorat bosqichlari, [SERTIFIKATLAR]<br>
+      /hamkorlik &nbsp;→ &nbsp;shartlar, eksport, minimal partiya<br>
+      /videolar &nbsp;→ &nbsp;barcha tezkor videolar arxivi<br>
+      /aloqa &nbsp;→ &nbsp;xarita, rekvizitlar, forma<br>
+      &nbsp;<br>
+      Tillar: &nbsp;UZ (asosiy) &nbsp;· &nbsp;RU &nbsp;· &nbsp;EN
+    </div>
+  </section>
+
+  <section style="margin-top: 40px;">
+    <h2 style="font-family: Newsreader, Georgia, serif; font-size: 27px; font-weight: 600; color: #26201A;">3 · Bosh sahifa: blok-blok</h2>
+    <p style="font-size: 14.5px; color: #6C5F53; margin-top: 8px;">Tartib tasodifiy emas — har blok oldingisidan tugʻilgan savolga javob beradi.</p>
+    <div style="display: flex; flex-direction: column; gap: 0; margin-top: 18px; border-top: 1px solid #E6DACA;">
+      <div style="display: grid; grid-template-columns: 44px 200px minmax(0, 1fr); gap: 16px; padding: 15px 0; border-bottom: 1px solid #F0E7DA; align-items: baseline;">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">01</span>
+        <span style="font-size: 14.5px; font-weight: 800; color: #26201A;">Eʼlon paneli</span>
+        <span style="font-size: 14px; color: #6C5F53; line-height: 1.55;">Joylashuv, jonli koʻrsatkich, til almashtirgich, telefon.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 44px 200px minmax(0, 1fr); gap: 16px; padding: 15px 0; border-bottom: 1px solid #F0E7DA; align-items: baseline;">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">02</span>
+        <span style="font-size: 14.5px; font-weight: 800; color: #26201A;">Navigatsiya</span>
+        <span style="font-size: 14px; color: #6C5F53; line-height: 1.55;">5 ta boʻlim + qidiruv + asosiy tugma. Skrollda yopishib qoladi.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 44px 200px minmax(0, 1fr); gap: 16px; padding: 15px 0; border-bottom: 1px solid #F0E7DA; align-items: baseline;">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">03</span>
+        <span style="font-size: 14.5px; font-weight: 800; color: #26201A;">Hero + video</span>
+        <span style="font-size: 14px; color: #6C5F53; line-height: 1.55;">Bitta jumlada taklif, 2 ta tugma, 4 ta raqam va jonli kadr.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 44px 200px minmax(0, 1fr); gap: 16px; padding: 15px 0; border-bottom: 1px solid #F0E7DA; align-items: baseline;">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">04</span>
+        <span style="font-size: 14.5px; font-weight: 800; color: #26201A;">Ishonch lentasi</span>
+        <span style="font-size: 14px; color: #6C5F53; line-height: 1.55;">Hamkor logotiplari — real logotiplar bilan almashtiriladi.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 44px 200px minmax(0, 1fr); gap: 16px; padding: 15px 0; border-bottom: 1px solid #F0E7DA; align-items: baseline;">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">05</span>
+        <span style="font-size: 14.5px; font-weight: 800; color: #26201A;">Tezkor videolar</span>
+        <span style="font-size: 14px; color: #6C5F53; line-height: 1.55;">5 ta vertikal kadr + izoh paneli. Saytning eng kuchli isboti.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 44px 200px minmax(0, 1fr); gap: 16px; padding: 15px 0; border-bottom: 1px solid #F0E7DA; align-items: baseline;">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">06</span>
+        <span style="font-size: 14.5px; font-weight: 800; color: #26201A;">Mahsulotlar</span>
+        <span style="font-size: 14px; color: #6C5F53; line-height: 1.55;">3 ta tab, 6 tadan karta. Kartada hover-video va spetsifikatsiya.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 44px 200px minmax(0, 1fr); gap: 16px; padding: 15px 0; border-bottom: 1px solid #F0E7DA; align-items: baseline;">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">07</span>
+        <span style="font-size: 14.5px; font-weight: 800; color: #26201A;">Texnik jadval</span>
+        <span style="font-size: 14px; color: #6C5F53; line-height: 1.55;">4 ta tab: enlar, xomashyo, qadoqlash, yetkazib berish + PDF.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 44px 200px minmax(0, 1fr); gap: 16px; padding: 15px 0; border-bottom: 1px solid #F0E7DA; align-items: baseline;">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">08</span>
+        <span style="font-size: 14.5px; font-weight: 800; color: #26201A;">Kalkulyator</span>
+        <span style="font-size: 14px; color: #6C5F53; line-height: 1.55;">Eni × zichlik × metraj → ogʻirlik, rulon, taxminiy summa.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 44px 200px minmax(0, 1fr); gap: 16px; padding: 15px 0; border-bottom: 1px solid #F0E7DA; align-items: baseline;">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">09</span>
+        <span style="font-size: 14.5px; font-weight: 800; color: #26201A;">Nega biz + tur</span>
+        <span style="font-size: 14px; color: #6C5F53; line-height: 1.55;">4 ta afzallik va bir daqiqalik fabrika videosi.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 44px 200px minmax(0, 1fr); gap: 16px; padding: 15px 0; border-bottom: 1px solid #F0E7DA; align-items: baseline;">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">10</span>
+        <span style="font-size: 14.5px; font-weight: 800; color: #26201A;">Jarayon</span>
+        <span style="font-size: 14px; color: #6C5F53; line-height: 1.55;">5 qadam: soʻrov → namuna → shartnoma → ishlab chiqarish → yuklash.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 44px 200px minmax(0, 1fr); gap: 16px; padding: 15px 0; border-bottom: 1px solid #F0E7DA; align-items: baseline;">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">11</span>
+        <span style="font-size: 14.5px; font-weight: 800; color: #26201A;">Sharhlar</span>
+        <span style="font-size: 14px; color: #6C5F53; line-height: 1.55;">Real mijoz sharhlari bilan toʻldiriladi — toʻqib chiqarilmaydi.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 44px 200px minmax(0, 1fr); gap: 16px; padding: 15px 0; border-bottom: 1px solid #F0E7DA; align-items: baseline;">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">12</span>
+        <span style="font-size: 14.5px; font-weight: 800; color: #26201A;">Soʻrov formasi</span>
+        <span style="font-size: 14px; color: #6C5F53; line-height: 1.55;">6 ta maydon, 2 tasi majburiy. Toʻq fonda — diqqat shu yerda.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 44px 200px minmax(0, 1fr); gap: 16px; padding: 15px 0; border-bottom: 1px solid #F0E7DA; align-items: baseline;">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #C25A32;">13</span>
+        <span style="font-size: 14.5px; font-weight: 800; color: #26201A;">Futer</span>
+        <span style="font-size: 14px; color: #6C5F53; line-height: 1.55;">4 ustun, ijtimoiy tarmoqlar, ish vaqti, huquqiy havolalar.</span>
+      </div>
+    </div>
+  </section>
+
+  <section style="margin-top: 40px;">
+    <h2 style="font-family: Newsreader, Georgia, serif; font-size: 27px; font-weight: 600; color: #26201A;">4 · UX qoidalari</h2>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 18px;">
+      <div style="border-left: 3px solid #C25A32; padding: 4px 0 4px 16px;">
+        <div style="font-size: 14px; font-weight: 800; color: #26201A;">Bitta asosiy harakat</div>
+        <p style="font-size: 13.5px; line-height: 1.55; color: #6C5F53; margin-top: 5px;">Har ekranda faqat bitta terrakota tugma. Qolganlari — chegarali yoki matnli.</p>
+      </div>
+      <div style="border-left: 3px solid #C25A32; padding: 4px 0 4px 16px;">
+        <div style="font-size: 14px; font-weight: 800; color: #26201A;">Raqam bilan gapirish</div>
+        <p style="font-size: 13.5px; line-height: 1.55; color: #6C5F53; margin-top: 5px;">“Sifatli” emas — “220 g/m², ± 1.5 % chetlanish, 350 t/oy”.</p>
+      </div>
+      <div style="border-left: 3px solid #C25A32; padding: 4px 0 4px 16px;">
+        <div style="font-size: 14px; font-weight: 800; color: #26201A;">Forma qisqa</div>
+        <p style="font-size: 13.5px; line-height: 1.55; color: #6C5F53; margin-top: 5px;">Majburiy: ism va telefon. Qolgani ixtiyoriy — soʻrov toʻxtab qolmasin.</p>
+      </div>
+      <div style="border-left: 3px solid #C25A32; padding: 4px 0 4px 16px;">
+        <div style="font-size: 14px; font-weight: 800; color: #26201A;">Fokus koʻrinadi</div>
+        <p style="font-size: 13.5px; line-height: 1.55; color: #6C5F53; margin-top: 5px;">Klaviatura bilan yurganda 3 px halqa. Kontrast AA darajasida.</p>
+      </div>
+      <div style="border-left: 3px solid #C25A32; padding: 4px 0 4px 16px;">
+        <div style="font-size: 14px; font-weight: 800; color: #26201A;">Mobil birinchi</div>
+        <p style="font-size: 13.5px; line-height: 1.55; color: #6C5F53; margin-top: 5px;">Bosiladigan element 44 px dan kichik emas; pastda doimiy CTA panel.</p>
+      </div>
+      <div style="border-left: 3px solid #C25A32; padding: 4px 0 4px 16px;">
+        <div style="font-size: 14px; font-weight: 800; color: #26201A;">Tezlik</div>
+        <p style="font-size: 13.5px; line-height: 1.55; color: #6C5F53; margin-top: 5px;">Videosiz sahifa 3 MB dan kam; video faqat koʻringanda yuklanadi.</p>
+      </div>
+    </div>
+  </section>
+
+  <section style="margin-top: 40px;">
+    <h2 style="font-family: Newsreader, Georgia, serif; font-size: 27px; font-weight: 600; color: #26201A;">5 · Texnik talablar</h2>
+    <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px; font-size: 14.5px; color: #26201A; line-height: 1.6;">
+      <div>· Uch til: UZ / RU / EN — alohida manzil (/ru/, /en/), hreflang belgilangan</div>
+      <div>· Soʻrovlar Telegram guruhiga va elektron pochtaga bir vaqtda tushadi</div>
+      <div>· Katalog admin panelidan boshqariladi: eni, zichlik, foto, video, holat</div>
+      <div>· SEO: har mahsulotga alohida sarlavha, Product va Organization mikro-belgilash</div>
+      <div>· Analitika: forma yuborilishi, video koʻrilishi, kalkulyator ishlatilishi hodisa sifatida</div>
+      <div>· Xavfsizlik: formada spam himoyasi, SSL, shaxsiy maʼlumotlar siyosati sahifasi</div>
+    </div>
+  </section>
+
+  <section style="margin-top: 40px;">
+    <h2 style="font-family: Newsreader, Georgia, serif; font-size: 27px; font-weight: 600; color: #26201A;">6 · Joriy etish bosqichlari</h2>
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 18px;">
+      <div style="display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 20px; background: #F7F1E8; border-radius: 12px; padding: 16px 20px;">
+        <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12.5px; color: #C25A32;">1-bosqich</div>
+        <div style="font-size: 14px; color: #26201A; line-height: 1.55;"><b>Kontent yigʻish.</b> Foto va videosuratga olish, texnik maʼlumotlar, hamkor logotiplari, sertifikatlar, kontaktlar.</div>
+      </div>
+      <div style="display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 20px; background: #F7F1E8; border-radius: 12px; padding: 16px 20px;">
+        <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12.5px; color: #C25A32;">2-bosqich</div>
+        <div style="font-size: 14px; color: #26201A; line-height: 1.55;"><b>Dizayn tasdigʻi.</b> Shu kanvasdagi ekranlar boʻyicha izohlar, ranglar va tugmalar yakuniy holatga keltiriladi.</div>
+      </div>
+      <div style="display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 20px; background: #F7F1E8; border-radius: 12px; padding: 16px 20px;">
+        <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12.5px; color: #C25A32;">3-bosqich</div>
+        <div style="font-size: 14px; color: #26201A; line-height: 1.55;"><b>Ishlab chiqish.</b> Bosh sahifa → katalog → mahsulot → ichki sahifalar. Uch til va admin panel.</div>
+      </div>
+      <div style="display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 20px; background: #F7F1E8; border-radius: 12px; padding: 16px 20px;">
+        <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12.5px; color: #C25A32;">4-bosqich</div>
+        <div style="font-size: 14px; color: #26201A; line-height: 1.55;"><b>Ishga tushirish.</b> Tezlik va mobil sinovi, analitika, Telegram integratsiyasi, eski saytdan koʻchirish.</div>
+      </div>
+    </div>
+  </section>
+
+  <section style="margin-top: 40px; background: #FBEDE5; border-radius: 14px; padding: 26px 28px;">
+    <h2 style="font-family: Newsreader, Georgia, serif; font-size: 25px; font-weight: 600; color: #26201A;">7 · Sizdan kutilayotgan maʼlumotlar</h2>
+    <p style="font-size: 14px; color: #6C5F53; margin-top: 8px;">Dizaynda kvadrat qavs ichida turgan hamma narsa — shu roʻyxatdan toʻldiriladi.</p>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 28px; margin-top: 16px; font-size: 14px; color: #26201A; line-height: 1.6;">
+      <div>· Telefon raqamlar va elektron pochta</div>
+      <div>· Toʻliq manzil va ish vaqti</div>
+      <div>· Mahsulot narxlari yoki narx siyosati</div>
+      <div>· Minimal partiya va tayyorlash muddati</div>
+      <div>· Sertifikat va sinov hujjatlari</div>
+      <div>· Hamkor logotiplari va sharhlar</div>
+      <div>· Ip raqami va texnik parametrlar</div>
+      <div>· Pallet/konteynerdagi miqdorlar</div>
+    </div>
+  </section>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{ "$preview": { "width": 900, "height": 2900 } }'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

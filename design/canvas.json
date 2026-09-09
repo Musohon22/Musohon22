@@ -1,0 +1,25 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Sayt ekranlari" },
+    { "id": "page-2", "name": "Tizim va reja" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html",    "x": 0,    "y": 0,    "w": 1440, "h": 8800, "page": "page-1", "title": "Bosh sahifa", "is_interactive": true },
+    { "file": "Catalog.dc.html", "x": 1600, "y": 0,    "w": 1440, "h": 1900, "page": "page-1", "title": "Katalog", "is_interactive": true },
+    { "file": "Product.dc.html", "x": 1600, "y": 2100, "w": 1440, "h": 2750, "page": "page-1", "title": "Mahsulot sahifasi", "is_interactive": true },
+    { "file": "Mobile.dc.html",  "x": 3200, "y": 0,    "w": 920,  "h": 1600, "page": "page-1", "title": "Mobil ekranlar", "is_interactive": true },
+
+    { "file": "System.dc.html",     "x": 0,    "y": 0, "w": 1200, "h": 2700, "page": "page-2", "title": "Dizayn tizimi" },
+    { "file": "VideoSlots.dc.html", "x": 1360, "y": 0, "w": 1200, "h": 1560, "page": "page-2", "title": "Video joylar xaritasi" },
+    { "file": "Plan.dc.html",       "x": 2720, "y": 0, "w": 900,  "h": 3000, "page": "page-2", "title": "Redizayn rejasi", "print": "flow" }
+  ],
+  "annotations": [
+    { "id": "note-1", "x": 0,    "y": -170, "w": 430, "page": "page-1", "text": "BOSH SAHIFA · 1440 px\n13 ta blok. Tugmalar, tab'lar, kalkulyator va video kartalar bosiladi — sinab ko'ring." },
+    { "id": "note-2", "x": 1600, "y": -170, "w": 430, "page": "page-1", "text": "KATALOG VA MAHSULOT\nFiltr chiplari, katak/ro'yxat almashtirgichi, galereya va miqdor qadamchisi ishlaydi." },
+    { "id": "note-3", "x": 3200, "y": -170, "w": 430, "page": "page-1", "text": "MOBIL\nBosh sahifa va vertikal video lenta. Barcha bosiladigan elementlar kamida 44x44 px." },
+    { "id": "note-4", "x": 0,    "y": -170, "w": 430, "page": "page-2", "text": "DIZAYN TIZIMI\nHar bir rang HEX bilan, tugmalarning 5 holati, forma maydonlari, soya, radius, harakat qoidalari." },
+    { "id": "note-5", "x": 1360, "y": -170, "w": 430, "page": "page-2", "text": "TEZKOR VIDEOLAR UCHUN JOYLAR\n6 ta aniq o'rin: o'lcham, aspekt, davomiylik, fayl talablari va yuklanish qoidasi." },
+    { "id": "note-6", "x": 2720, "y": -170, "w": 430, "page": "page-2", "text": "REJA\nTuzilma, blok-blok mantiq, UX qoidalari, texnik talablar va 4 bosqichli joriy etish." }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

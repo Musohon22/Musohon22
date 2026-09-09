@@ -1,0 +1,323 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #FAF5EE;
+      color: #26201A;
+      font-family: Manrope, "Segoe UI", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    h1, h2, h3, h4, p, figure, blockquote { margin: 0; }
+    ul { margin: 0; padding: 0; list-style: none; }
+    a { color: #C25A32; text-decoration: none; transition: color .2s ease; }
+    a:hover { color: #A34823; }
+    input, select, textarea, button { font-family: inherit; font-size: inherit; color: inherit; }
+    ::selection { background: #F3D6C6; }
+
+    /* --- Vafel to'qima motivi: brendning imzo naqshi --- */
+    .waffle {
+      background-image:
+        repeating-linear-gradient(0deg, rgba(38,32,26,.055) 0 1px, transparent 1px 24px),
+        repeating-linear-gradient(90deg, rgba(38,32,26,.055) 0 1px, transparent 1px 24px);
+    }
+    .waffle-dark {
+      background-image:
+        repeating-linear-gradient(0deg, rgba(255,247,236,.07) 0 1px, transparent 1px 24px),
+        repeating-linear-gradient(90deg, rgba(255,247,236,.07) 0 1px, transparent 1px 24px);
+    }
+    .weave {
+      background-image:
+        repeating-linear-gradient(45deg, rgba(255,247,236,.06) 0 2px, transparent 2px 9px),
+        repeating-linear-gradient(-45deg, rgba(255,247,236,.05) 0 2px, transparent 2px 9px);
+    }
+
+    /* --- Tugmalar: barcha holatlar --- */
+    .btn {
+      position: relative; overflow: hidden; cursor: pointer;
+      transition: transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .22s ease, filter .22s ease,
+                  background-color .22s ease, border-color .22s ease, color .22s ease;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn:active { transform: translateY(0) scale(.99); transition-duration: .06s; }
+    .btn:focus-visible { outline: 3px solid rgba(194,90,50,.38); outline-offset: 3px; }
+    .btn-p:hover { box-shadow: 0 14px 30px rgba(194,90,50,.34); filter: brightness(1.05) saturate(1.04); }
+    .btn-p::after {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(100deg, transparent 22%, rgba(255,255,255,.38) 46%, transparent 68%);
+      transform: translateX(-130%); transition: transform .7s cubic-bezier(.2,.7,.3,1);
+    }
+    .btn-p:hover::after { transform: translateX(130%); }
+    .btn-s:hover { background: #F2E9DC; border-color: #26201A; box-shadow: 0 8px 20px rgba(42,33,27,.10); }
+    .btn-d:hover { background: rgba(255,247,236,.10); border-color: rgba(255,247,236,.55); }
+    .btn-g:hover { color: #A34823; }
+    .btn-ico { transition: background-color .2s ease, color .2s ease, transform .18s ease, border-color .2s; }
+    .btn-ico:hover { background: #F2E9DC; transform: translateY(-2px); }
+
+    /* --- Kartalar --- */
+    .card { transition: transform .28s cubic-bezier(.2,.7,.3,1), box-shadow .28s ease, border-color .28s ease; }
+    .card:hover { transform: translateY(-5px); box-shadow: 0 22px 50px rgba(42,33,27,.15); border-color: #D6C6B2; }
+    .card:hover .zoom { transform: scale(1.06); }
+    .card:hover .rev { opacity: 1; transform: translateY(0); }
+    .zoom { transition: transform .55s cubic-bezier(.2,.7,.3,1); }
+    .rev { opacity: 0; transform: translateY(10px); transition: opacity .3s ease, transform .3s ease; }
+
+    /* --- Navigatsiya --- */
+    .nav-l { position: relative; }
+    .nav-l::after {
+      content: ""; position: absolute; left: 0; bottom: -7px; height: 2px; width: 100%;
+      background: #C25A32; transform: scaleX(0); transform-origin: left;
+      transition: transform .3s cubic-bezier(.2,.7,.3,1);
+    }
+    .nav-l:hover::after { transform: scaleX(1); }
+
+    /* --- Chip / filtr --- */
+    .chip { transition: background-color .2s ease, color .2s ease, border-color .2s ease, transform .16s ease, box-shadow .2s; cursor: pointer; }
+    .chip:hover { transform: translateY(-1px); border-color: #C25A32; color: #A34823; }
+
+    /* --- Maydonlar --- */
+    .fld { transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease; }
+    .fld:focus { outline: none; border-color: #C25A32; box-shadow: 0 0 0 4px rgba(194,90,50,.16); background: #FFFFFF; }
+    .fld-d:focus { border-color: #E8A585; box-shadow: 0 0 0 4px rgba(232,165,133,.20); }
+
+    /* --- Video sloti --- */
+    .vslot { position: relative; overflow: hidden; transition: transform .3s cubic-bezier(.2,.7,.3,1), box-shadow .3s ease, outline-color .2s ease; }
+    .vslot:hover { transform: translateY(-4px); box-shadow: 0 26px 56px rgba(42,33,27,.28); }
+    .vslot:hover .play { transform: scale(1.08); background: #C25A32; color: #FFF7EC; }
+    .vslot:hover .vmeta { opacity: 1; transform: translateY(0); }
+    .play { transition: transform .28s cubic-bezier(.2,.7,.3,1), background-color .25s ease, color .25s ease; }
+    .vmeta { opacity: .0; transform: translateY(8px); transition: opacity .3s ease, transform .3s ease; }
+
+    /* --- Harakat --- */
+    .rise { opacity: 0; transform: translateY(16px); animation: rise .8s cubic-bezier(.2,.7,.3,1) forwards; }
+    @keyframes rise { to { opacity: 1; transform: none; } }
+    .pulse { animation: pulse 1.9s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.8); } }
+    .marq { display: flex; gap: 64px; width: max-content; animation: marq 32s linear infinite; }
+    @keyframes marq { to { transform: translateX(-50%); } }
+    .shimmer {
+      background: linear-gradient(100deg, rgba(255,247,236,.04) 30%, rgba(255,247,236,.12) 50%, rgba(255,247,236,.04) 70%);
+      background-size: 220% 100%; animation: shimmer 3.4s linear infinite;
+    }
+    @keyframes shimmer { to { background-position: -220% 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .rise, .pulse, .marq, .shimmer { animation: none; opacity: 1; transform: none; }
+    }
+  </style>
+</helmet>
+<div style="width: 920px; background: #EFE6D8; padding: 40px; display: flex; gap: 60px; align-items: flex-start;">
+
+  <!-- ===== EKRAN 1 · MOBIL BOSH SAHIFA ===== -->
+  <div>
+    <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .1em; color: #8A7A6A; margin-bottom: 12px;">EKRAN 1 · BOSH SAHIFA · 390×844</div>
+    <div style="width: 390px; height: 1440px; background: #FAF5EE; border-radius: 28px; border: 1px solid #DDCEBA; box-shadow: 0 24px 60px rgba(42,33,27,.18); overflow: hidden; position: relative;">
+
+      <div style="height: 62px; padding: 0 18px; display: flex; align-items: center; justify-content: space-between; background: rgba(250,245,238,.94); border-bottom: 1px solid #E6DACA;">
+        <button class="btn-ico" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid #E6DACA; background: transparent; display: flex; align-items: center; justify-content: center;" aria-label="Menyu">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#26201A" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <div style="display: flex; align-items: center; gap: 9px;">
+          <svg width="28" height="28" viewBox="0 0 38 38" fill="none"><rect width="38" height="38" rx="10" fill="#C25A32"/><path d="M9 13.5h20M9 19h20M9 24.5h20M13.5 9v20M19 9v20M24.5 9v20" stroke="#FFF7EC" stroke-width="1.8" stroke-linecap="round" opacity="0.9"/></svg>
+          <span style="font-family: Newsreader, Georgia, serif; font-size: 19px; font-weight: 600; color: #26201A;">Vafelka</span>
+        </div>
+        <button class="btn-ico" style="width: 44px; height: 44px; border-radius: 12px; border: none; background: #C25A32; display: flex; align-items: center; justify-content: center;" aria-label="Qoʻngʻiroq">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF7EC" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h5l2 5-3 2a12 12 0 005 5l2-3 5 2v5a15 15 0 01-16-16z"/></svg>
+        </button>
+      </div>
+
+      <div class="waffle" style="padding: 26px 18px 24px;">
+        <div style="display: inline-flex; align-items: center; gap: 8px; background: #FBEDE5; border: 1px solid #F0D6C6; border-radius: 999px; padding: 6px 13px;">
+          <span style="width: 5px; height: 5px; border-radius: 50%; background: #C25A32;"></span>
+          <span style="font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #A34823;">100% paxta · Namangan</span>
+        </div>
+        <h1 style="font-family: Newsreader, Georgia, serif; font-size: 38px; line-height: 1.04; font-weight: 500; letter-spacing: -0.022em; color: #26201A; margin-top: 16px;">Vafel gazlama fabrikadan</h1>
+        <p style="font-size: 15px; line-height: 1.6; color: #6C5F53; margin-top: 12px;">Eni 45–165 sm, zichligi 90–220 g/m². Oyiga 350+ tonna.</p>
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
+          <button class="btn btn-p" style="height: 52px; border: none; border-radius: 12px; background: #C25A32; color: #FFF7EC; font-size: 15px; font-weight: 700; box-shadow: 0 8px 20px rgba(194,90,50,.28);">Katalogni koʻrish</button>
+          <button class="btn btn-s" style="height: 52px; border: 1.5px solid #D6C6B2; border-radius: 12px; background: transparent; color: #26201A; font-size: 15px; font-weight: 700;">Namuna soʻrash</button>
+        </div>
+      </div>
+
+      <div style="padding: 4px 18px 22px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
+        <div style="background: #FFFFFF; border: 1px solid #E6DACA; border-radius: 12px; padding: 12px 10px; text-align: center;">
+          <div style="font-family: Newsreader, Georgia, serif; font-size: 21px; color: #26201A;">350+</div>
+          <div style="font-size: 10.5px; color: #9C8E80; margin-top: 3px;">t / oy</div>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #E6DACA; border-radius: 12px; padding: 12px 10px; text-align: center;">
+          <div style="font-family: Newsreader, Georgia, serif; font-size: 21px; color: #26201A;">45–165</div>
+          <div style="font-size: 10.5px; color: #9C8E80; margin-top: 3px;">sm eni</div>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #E6DACA; border-radius: 12px; padding: 12px 10px; text-align: center;">
+          <div style="font-family: Newsreader, Georgia, serif; font-size: 21px; color: #26201A;">2</div>
+          <div style="font-size: 10.5px; color: #9C8E80; margin-top: 3px;">toʻquv sexi</div>
+        </div>
+      </div>
+
+      <!-- Tezkor videolar: gorizontal lenta -->
+      <div class="waffle-dark" style="background-color: #241C16; padding: 22px 0 24px;">
+        <div style="padding: 0 18px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+          <div>
+            <div style="font-size: 10.5px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; color: #E8A585;">Tezkor videolar</div>
+            <div style="font-family: Newsreader, Georgia, serif; font-size: 22px; color: #FFF7EC; margin-top: 6px;">Sexdan 8 soniya</div>
+          </div>
+          <span style="font-size: 12.5px; color: #B9A897;">Barchasi →</span>
+        </div>
+        <div style="display: flex; gap: 12px; padding: 0 18px; overflow: hidden;">
+          <sc-for list="{{ reels }}" as="r" hint-placeholder-count="3">
+            <div class="vslot weave" onClick="{{ r.pick }}" style="width: 132px; height: 234px; flex-shrink: 0; border-radius: 14px; background-color: #33271F; background-image: linear-gradient(160deg, #453428, #241C16); border: 2px solid {{ r.ring }};">
+              <div style="position: absolute; top: 9px; left: 10px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 9.5px; color: #E8C4A8;">{{ r.no }}</div>
+              <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;">
+                <div class="play" style="width: 42px; height: 42px; border-radius: 50%; border: 1.5px solid rgba(255,247,236,.3); background: rgba(255,247,236,.12); color: #FFF7EC; display: flex; align-items: center; justify-content: center;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="margin-left: 2px;"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>
+                </div>
+              </div>
+              <div style="position: absolute; left: 10px; right: 10px; bottom: 11px;">
+                <div style="font-size: 12.5px; font-weight: 700; color: #FFF7EC; line-height: 1.3;">{{ r.title }}</div>
+                <div style="font-size: 10.5px; color: #B9A897; margin-top: 3px;">{{ r.dur }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="padding: 24px 18px 20px;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px;">
+          <h2 style="font-family: Newsreader, Georgia, serif; font-size: 26px; font-weight: 500; color: #26201A;">Ommabop formatlar</h2>
+          <span style="font-size: 13px; color: #C25A32; font-weight: 700;">Barchasi</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+          <sc-for list="{{ items }}" as="p" hint-placeholder-count="4">
+            <article style="background: #FFFFFF; border: 1px solid #E6DACA; border-radius: 14px; overflow: hidden;">
+              <div class="waffle" style="height: 108px; background-color: {{ p.tint }}; position: relative;">
+                <div style="position: absolute; bottom: 8px; left: 8px; background: rgba(38,32,26,.72); border-radius: 5px; padding: 3px 7px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 8.5px; color: #FFF7EC;">▶ 4s</div>
+              </div>
+              <div style="padding: 12px;">
+                <div style="font-size: 14px; font-weight: 700; color: #26201A; line-height: 1.3;">{{ p.name }}</div>
+                <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; color: #9C8E80; margin-top: 6px;">{{ p.spec }}</div>
+              </div>
+            </article>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 18px 16px; background: rgba(250,245,238,.96); border-top: 1px solid #E6DACA; display: flex; gap: 10px; box-shadow: 0 -8px 24px rgba(42,33,27,.08);">
+        <button class="btn btn-s" style="width: 56px; height: 52px; border: 1.5px solid #D6C6B2; border-radius: 12px; background: transparent; display: flex; align-items: center; justify-content: center;" aria-label="Telegram">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#26201A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4L2.5 11.5l6 2L11 20l3-4.5 5 2.5L21 4z"/></svg>
+        </button>
+        <button class="btn btn-p" style="flex-grow: 1; height: 52px; border: none; border-radius: 12px; background: #C25A32; color: #FFF7EC; font-size: 15px; font-weight: 700;">Narx soʻrash</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== EKRAN 2 · VIDEO LENTA ===== -->
+  <div>
+    <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .1em; color: #8A7A6A; margin-bottom: 12px;">EKRAN 2 · VIDEO LENTA · 390×844</div>
+    <div style="width: 390px; height: 844px; border-radius: 28px; border: 1px solid #DDCEBA; box-shadow: 0 24px 60px rgba(42,33,27,.18); overflow: hidden; position: relative; background: #1B1410;">
+      <div class="weave" style="position: absolute; inset: 0; background-image: linear-gradient(170deg, #3A2C23 0%, #1B1410 60%, #2E241C 100%);"></div>
+
+      <div style="position: absolute; top: 0; left: 0; right: 0; padding: 18px; display: flex; align-items: center; justify-content: space-between; background: linear-gradient(to bottom, rgba(20,15,11,.75), transparent);">
+        <button class="btn-ico" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid rgba(255,247,236,.2); background: rgba(20,15,11,.4); display: flex; align-items: center; justify-content: center;" aria-label="Orqaga">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF7EC" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <span style="font-size: 14.5px; font-weight: 700; color: #FFF7EC;">Ishlab chiqarish</span>
+        <button class="btn-ico" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid rgba(255,247,236,.2); background: rgba(20,15,11,.4); display: flex; align-items: center; justify-content: center;" aria-label="Ovoz">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF7EC" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M17 8.5a5 5 0 010 7"/></svg>
+        </button>
+      </div>
+
+      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <div class="play" style="width: 76px; height: 76px; border-radius: 50%; border: 1.5px solid rgba(255,247,236,.34); background: rgba(255,247,236,.13); color: #FFF7EC; display: flex; align-items: center; justify-content: center;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" style="margin-left: 4px;"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>
+        </div>
+      </div>
+
+      <div style="position: absolute; right: 14px; bottom: 190px; display: flex; flex-direction: column; gap: 18px; align-items: center;">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+          <div class="btn-ico" style="width: 48px; height: 48px; border-radius: 50%; background: rgba(255,247,236,.12); border: 1px solid rgba(255,247,236,.18); display: flex; align-items: center; justify-content: center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFF7EC" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-9a4 4 0 017-2.5A4 4 0 0119 11c0 4.5-7 9-7 9z"/></svg>
+          </div>
+          <span style="font-size: 11px; color: #D9CBBB;">248</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+          <div class="btn-ico" style="width: 48px; height: 48px; border-radius: 50%; background: rgba(255,247,236,.12); border: 1px solid rgba(255,247,236,.18); display: flex; align-items: center; justify-content: center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFF7EC" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4L2.5 11.5l6 2L11 20l3-4.5 5 2.5L21 4z"/></svg>
+          </div>
+          <span style="font-size: 11px; color: #D9CBBB;">Ulash</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+          <div class="btn-ico" style="width: 48px; height: 48px; border-radius: 50%; background: rgba(255,247,236,.12); border: 1px solid rgba(255,247,236,.18); display: flex; align-items: center; justify-content: center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFF7EC" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/></svg>
+          </div>
+          <span style="font-size: 11px; color: #D9CBBB;">Katalog</span>
+        </div>
+      </div>
+
+      <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 20px 18px 22px; background: linear-gradient(to top, rgba(20,15,11,.92), transparent);">
+        <div style="display: flex; gap: 4px; margin-bottom: 16px;">
+          <div style="flex-grow: 1; height: 3px; border-radius: 2px; background: #C25A32;"></div>
+          <div style="flex-grow: 1; height: 3px; border-radius: 2px; background: rgba(255,247,236,.22);"></div>
+          <div style="flex-grow: 1; height: 3px; border-radius: 2px; background: rgba(255,247,236,.22);"></div>
+          <div style="flex-grow: 1; height: 3px; border-radius: 2px; background: rgba(255,247,236,.22);"></div>
+          <div style="flex-grow: 1; height: 3px; border-radius: 2px; background: rgba(255,247,236,.22);"></div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; letter-spacing: .1em; color: #E8C4A8;">01 · SEX № 1</div>
+        <div style="font-family: Newsreader, Georgia, serif; font-size: 24px; color: #FFF7EC; margin-top: 8px; line-height: 1.25;">Toʻquv dastgohlari</div>
+        <p style="font-size: 13.5px; color: #B9A897; margin-top: 8px; line-height: 1.5;">Xom ipdan vafel toʻqimasi qanday tugʻiladi</p>
+        <button class="btn btn-p" style="width: 100%; height: 50px; margin-top: 16px; border: none; border-radius: 12px; background: #C25A32; color: #FFF7EC; font-size: 15px; font-weight: 700;">Shu mahsulotni soʻrash</button>
+      </div>
+    </div>
+
+    <div style="width: 390px; margin-top: 24px; background: #FFFFFF; border: 1px solid #DDCEBA; border-radius: 16px; padding: 20px;">
+      <div style="font-size: 11.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #9C8E80; margin-bottom: 14px;">Mobil qoidalar</div>
+      <div style="display: flex; flex-direction: column; gap: 11px; font-size: 13.5px; color: #26201A; line-height: 1.5;">
+        <div>· Barcha bosiladigan elementlar — kamida <b>44×44 px</b></div>
+        <div>· Video lenta faqat <b>ovozsiz</b> avtoijro, ovoz — bosilganda</div>
+        <div>· Pastdagi CTA panel doim koʻrinadi (Telegram + Narx soʻrash)</div>
+        <div>· Sahifa ochilishida video emas, <b>poster kadr</b> yuklanadi</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{ "$preview": { "width": 920, "height": 1600 } }'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { reel: 0 };
+  }
+
+  renderVals() {
+    const data = [
+      { no: '01', title: 'Toʻquv sexi', dur: '0:08' },
+      { no: '02', title: 'Oqartirish', dur: '0:09' },
+      { no: '03', title: 'Nazorat', dur: '0:07' }
+    ];
+    return {
+      reels: data.map((r, i) => ({
+        ...r,
+        ring: i === this.state.reel ? '#C25A32' : 'rgba(255,247,236,0.10)',
+        pick: () => this.setState({ reel: i })
+      })),
+      items: [
+        { name: 'Gazlama 100 sm', spec: '170 g/m²', tint: '#F2E9DC' },
+        { name: 'Gazlama 150 sm', spec: '200 g/m²', tint: '#EFE6D8' },
+        { name: 'Oshxona sochigʻi', spec: '45×80 · 3 dona', tint: '#F6EFE4' },
+        { name: 'Hammom sochigʻi', spec: '70×140', tint: '#F2E9DC' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
