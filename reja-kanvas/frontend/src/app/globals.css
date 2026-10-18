@@ -58,6 +58,22 @@
   --dot: 58 61 69;
   color-scheme: dark;
 }
+/* High contrast: darker text and stronger lines in both themes */
+.contrast-high {
+  --ink-2: 20 22 26;
+  --ink-3: 30 32 38;
+  --ink-muted: 52 55 62;
+  --line: 140 135 125;
+  --line-strong: 100 96 88;
+}
+.dark.contrast-high {
+  --ink-2: 250 248 244;
+  --ink-3: 240 238 232;
+  --ink-muted: 220 216 208;
+  --line: 120 124 132;
+  --line-strong: 160 164 172;
+}
+
 .dark .card-scope {
   --paper: 244 241 234;
   --paper-2: 251 249 244;
@@ -89,6 +105,9 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+  }
+  html.text-large {
+    font-size: 112.5%;
   }
   body {
     @apply bg-paper font-sans text-ink antialiased;
@@ -211,6 +230,26 @@
 .prose-plan ul[data-type="taskList"] li[data-checked="true"] > div {
   @apply text-ink-muted line-through;
 }
+.prose-plan img {
+  @apply my-2 max-h-[480px] max-w-full rounded-lg;
+}
+.prose-plan img.ProseMirror-selectednode {
+  outline: 3px solid rgb(var(--accent));
+}
+.prose-plan table {
+  @apply my-3 w-full border-collapse text-[15px];
+}
+.prose-plan th,
+.prose-plan td {
+  @apply border border-line px-2.5 py-1.5 align-top;
+}
+.prose-plan th {
+  @apply bg-paper-2 text-left font-bold;
+}
+.prose-plan .selectedCell {
+  background: rgb(var(--accent-soft));
+}
+
 .prose-plan p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;

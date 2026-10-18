@@ -11,8 +11,11 @@ import { createPlan, deletePlan, deletePlans, movePlan, movePlans, toast, update
 import { PRIORITIES } from "@/lib/recurrence";
 import { CARD_BG } from "./PlanCard";
 import { normalize } from "@/lib/search";
-import type { Plan } from "@/lib/types";
-import { Arrange, Card, Fit, Minus, Plus, Search, X } from "../Icons";
+import type { CanvasItem, Plan } from "@/lib/types";
+import { uuid } from "@/lib/api";
+import { removeItem, saveItem } from "@/lib/store";
+import { CanvasItemView } from "./CanvasItemView";
+import { Arrange, Card, Fit, Minus, Plus, Quote, Search, X } from "../Icons";
 import { PlanCard } from "./PlanCard";
 import { Minimap } from "./Minimap";
 import { EmptyState } from "./EmptyState";
@@ -49,7 +52,16 @@ function loadView(): View {
   return { x: 24, y: 8, zoom: 1 };
 }
 
-export function Canvas({ plans }: { plans: Plan[] }) {
+export function Canvas({
+  plans, items = [], board = null, readOnly = false, dimmed,
+}: {
+  plans: Plan[];
+  items?: CanvasItem[];
+  board?: string | null;
+  readOnly?: boolean;
+  /** plans hidden by the active filter: drawn faded, not removed, so the layout stays put */
+  dimmed?: Set<string>;
+}) {
   const t = useT();
   const router = useRouter();
   const user = useStore((s) => s.user)!;
@@ -209,8 +221,15 @@ export function Canvas({ plans }: { plans: Plan[] }) {
     setDrag(null);
   }
 
+  const readOnlyRef = useRef(readOnly);
+  readOnlyRef.current = readOnly;
   const onCardPointerDown = useCallback((e: React.PointerEvent, plan: Plan) => {
     if (e.button !== 0 || (e.target as HTMLElement).closest("button, textarea, input, a")) return;
+    if (readOnlyRef.current) {
+      e.stopPropagation();
+      setSelected(plan.id);
+      return;
+    }
     e.stopPropagation();
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     box.current?.setPointerCapture(e.pointerId);
@@ -439,11 +458,20 @@ export function Canvas({ plans }: { plans: Plan[] }) {
     setTimeout(fit, 50);
   }
 
+  function newItem(kind: CanvasItem["kind"]) {
+    const v = viewRef.current;
+    const w = kind === "note" ? 220 : 720;
+    const h = kind === "note" ? 160 : 480;
+    const x = snap((size.w / 2 - v.x) / v.zoom - w / 2);
+    const y = snap((size.h / 2 - v.y) / v.zoom - h / 2);
+    void saveItem({ id: uuid(), board_id: board, kind, x, y, w, h, text: "", color: kind === "note" ? "yellow" : "white" });
+  }
+
   function newCard() {
     const v = viewRef.current;
     const center = { x: (size.w / 2 - v.x) / v.zoom - CARD_W / 2, y: (size.h / 3 - v.y) / v.zoom };
     const pos = freeSlot(plans, heights, center);
-    const id = createPlan({ title: t("canvas.newTitle"), x: pos.x, y: pos.y });
+    const id = createPlan({ title: t("canvas.newTitle"), x: pos.x, y: pos.y, board_id: board });
     setSelected(id);
     setEditing(id);
   }
@@ -528,6 +556,10 @@ export function Canvas({ plans }: { plans: Plan[] }) {
             </div>
           ))}
 
+          {items.filter((i) => i.kind === "frame").map((i) => (
+            <CanvasItemView key={i.id} item={i} zoom={view.zoom} readOnly={readOnly} onCommit={(it) => void saveItem(it)} onDelete={(id) => void removeItem(id)} />
+          ))}
+
           {links.length > 0 && (
             <svg aria-hidden="true" className="pointer-events-none absolute left-0 top-0 overflow-visible" width={1} height={1}>
               <defs>
@@ -557,6 +589,10 @@ export function Canvas({ plans }: { plans: Plan[] }) {
             />
           )}
 
+          {items.filter((i) => i.kind === "note").map((i) => (
+            <CanvasItemView key={i.id} item={i} zoom={view.zoom} readOnly={readOnly} onCommit={(it) => void saveItem(it)} onDelete={(id) => void removeItem(id)} />
+          ))}
+
           {visible.map((p) => {
             const member = drag?.group?.find((m) => m.id === p.id);
             const shown =
@@ -574,6 +610,7 @@ export function Canvas({ plans }: { plans: Plan[] }) {
                 blocked={p.blocked_by.some((b) => openIds.has(b))}
                 dragging={drag?.id === p.id || !!member}
                 pulse={pulse === p.id}
+                faded={!!dimmed?.has(p.id)}
                 lowDetail={lowDetail}
                 editing={editing === p.id}
                 onPointerDown={onCardPointerDown}
@@ -591,7 +628,9 @@ export function Canvas({ plans }: { plans: Plan[] }) {
 
       {/* tools */}
       <div role="toolbar" aria-label={t("canvas.tools")} className="absolute left-3 top-3 flex flex-col gap-1 rounded-2xl border border-line bg-paper-2/95 p-1.5 shadow-card backdrop-blur">
-        <button type="button" className="btn-icon bg-ink text-paper hover:bg-ink-2" aria-label={t("nav.newPlan")} title={t("nav.newPlan")} onClick={newCard}><Card /></button>
+        <button type="button" className="btn-icon bg-ink text-paper hover:bg-ink-2" aria-label={t("nav.newPlan")} title={t("nav.newPlan")} onClick={newCard} disabled={readOnly}><Card /></button>
+        <button type="button" className="btn-icon" aria-label={t("canvas.note")} title={t("canvas.note")} onClick={() => newItem("note")} disabled={readOnly}><Quote /></button>
+        <button type="button" className="btn-icon" aria-label={t("canvas.frame")} title={t("canvas.frame")} onClick={() => newItem("frame")} disabled={readOnly}><Fit /></button>
         <button type="button" className="btn-icon" aria-label={t("canvas.arrange")} title={t("canvas.arrange")} onClick={tidy} disabled={!plans.length}><Arrange /></button>
         <button type="button" className="btn-icon" aria-label={t("canvas.fit")} title={t("canvas.fit")} onClick={fit} disabled={!plans.length}><Fit /></button>
         <div className="mx-2 my-1 h-px bg-line" />

@@ -5,9 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { hasKey } from "@/lib/i18n";
-import { loadPlans, loadStats, signOut, t as translate, useStore, useT } from "@/lib/store";
-import type { Notification as Note } from "@/lib/types";
-import { Bell, Calendar, Grid, Inbox, ListIcon, Logo, Search, Settings, Target, Trash } from "@/components/Icons";
+import { loadBoards, loadItems, loadPlans, loadSavedFilters, loadStats, setUser, signOut, t as translate, useStore, useT } from "@/lib/store";
+import type { Notification as Note, User } from "@/lib/types";
+import { Arrange, Bell, Calendar, Grid, Inbox, ListIcon, Logo, More, Search, Settings } from "@/components/Icons";
+import { Tour } from "@/components/Tour";
 import { CommandPalette } from "@/components/CommandPalette";
 import { SyncBanner } from "@/components/SyncBanner";
 import { ConflictDialog } from "@/components/ConflictDialog";
@@ -17,10 +18,16 @@ import type { MessageKey } from "@/lib/i18n";
 const NAV: { href: string; key: MessageKey; icon: typeof Grid }[] = [
   { href: "/canvas", key: "nav.canvas", icon: Grid },
   { href: "/list", key: "nav.list", icon: ListIcon },
+  { href: "/kanban", key: "nav.kanban", icon: Arrange },
   { href: "/calendar", key: "nav.calendar", icon: Calendar },
-  { href: "/analytics", key: "nav.analytics", icon: Target },
   { href: "/inbox", key: "nav.inbox", icon: Inbox },
-  { href: "/trash", key: "nav.trash", icon: Trash },
+];
+const MORE: { href: string; key: MessageKey }[] = [
+  { href: "/goals", key: "nav.goals" },
+  { href: "/review", key: "nav.review" },
+  { href: "/analytics", key: "nav.analytics" },
+  { href: "/teams", key: "nav.teams" },
+  { href: "/trash", key: "nav.trash" },
 ];
 
 const NOTIFY_KEY = "reja.notify";
@@ -92,9 +99,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!user) return;
     void loadPlans();
     void loadStats();
+    void loadBoards();
+    void loadItems();
+    void loadSavedFilters();
+    // refresh the cached profile (preferences, 2FA state) once per visit
+    api.get<User>("/api/me").then(setUser).catch(() => undefined);
     const id = setInterval(() => void loadStats(), 60000);
     return () => clearInterval(id);
-  }, [user]);
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // accessibility preferences from the account
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("text-large", !!user?.prefs?.large_text);
+    root.classList.toggle("contrast-high", !!user?.prefs?.high_contrast);
+  }, [user?.prefs?.large_text, user?.prefs?.high_contrast]);
 
   if (!ready || !user) return null;
   const badge = (stats?.awaiting_my_approval ?? 0) + (stats?.unread_notifications ?? 0);
@@ -102,7 +121,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col">
       <a href="#main" className="sr-only-focusable fixed left-2 top-2 z-50 rounded-lg bg-ink px-3 py-2 text-paper">Main</a>
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-paper-2 px-4 py-3 sm:px-6">
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-paper-2 px-4 py-3 print:hidden sm:px-6">
         <Link href="/canvas" className="flex items-center gap-2.5 rounded-lg">
           <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-ink text-paper"><Logo size={20} /></span>
           <span className="font-display text-[22px] font-extrabold tracking-tight">Reja<span className="text-accent">.</span></span>
@@ -125,6 +144,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+          <details className="relative">
+            <summary
+              className={`flex h-9 cursor-pointer list-none items-center gap-2 whitespace-nowrap rounded-lg px-3 text-sm font-bold [&::-webkit-details-marker]:hidden ${MORE.some((m) => path.startsWith(m.href)) ? "bg-surface text-ink shadow-sm" : "text-ink-3 hover:text-ink"}`}
+            >
+              <More size={16} />
+              {t("nav.more")}
+            </summary>
+            <div className="absolute left-0 z-40 mt-2 w-56 rounded-xl border border-line bg-surface p-1 shadow-lift sm:left-auto sm:right-0">
+              {MORE.map((m) => (
+                <Link
+                  key={m.href}
+                  href={m.href}
+                  aria-current={path.startsWith(m.href) ? "page" : undefined}
+                  onClick={(e) => (e.currentTarget.closest("details") as HTMLDetailsElement).removeAttribute("open")}
+                  className={`block rounded-lg px-3 py-2.5 text-sm font-semibold hover:bg-paper-2 ${path.startsWith(m.href) ? "text-accent-ink" : ""}`}
+                >
+                  {t(m.key)}
+                </Link>
+              ))}
+            </div>
+          </details>
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <button
@@ -171,6 +211,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <SyncBanner />
       <div id="main" className="flex min-h-0 flex-1 flex-col">{children}</div>
       <ConflictDialog />
+      <Tour />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <OverdueDialog />
     </div>

@@ -3,7 +3,7 @@ export type Color = "yellow" | "mint" | "lilac" | "peach" | "sky" | "white";
 export type PlanStatus = "active" | "pending_approval" | "returned" | "done" | "cancelled";
 export type StepStatus = "todo" | "done" | "cancelled";
 export type Rating = "excellent" | "good" | "partial";
-export type Role = "owner" | "approver" | "backup";
+export type Role = "owner" | "approver" | "backup" | "team" | "viewer";
 export type Priority = "low" | "normal" | "high" | "urgent";
 
 export interface Recurrence {
@@ -13,6 +13,16 @@ export interface Recurrence {
   until: string | null;
 }
 
+export interface Prefs {
+  email_kinds: string[];
+  digest: boolean;
+  quiet_start: string | null;
+  quiet_end: string | null;
+  large_text: boolean;
+  high_contrast: boolean;
+  onboarded: boolean;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -20,6 +30,8 @@ export interface User {
   tz: string;
   lang: Lang;
   created_at: string;
+  totp_enabled?: boolean;
+  prefs?: Partial<Prefs>;
 }
 
 export interface Person {
@@ -71,6 +83,12 @@ export interface Plan {
   tracked_seconds: number;
   timer_started_at: string | null;
   blocked_by: string[];
+  parent_id: string | null;
+  duration_minutes: number | null;
+  goal_id: string | null;
+  board_id: string | null;
+  approval_stage: number;
+  approval_chain: string[];
   my_role?: Role | null;
   can_decide?: boolean;
   purge_at?: string;
@@ -83,6 +101,8 @@ export interface Step {
   status: StepStatus;
   position: number;
   done_at: string | null;
+  due_at?: string | null;
+  assignee_id?: string | null;
 }
 
 export interface Attachment {
@@ -91,6 +111,8 @@ export interface Attachment {
   mime: string;
   size: number;
   created_at: string;
+  inline?: boolean;
+  url?: string;
 }
 
 export interface PlanDetail extends Plan {
@@ -103,6 +125,11 @@ export interface PlanDetail extends Plan {
   approved_by: Person | null;
   blockers?: string[];
   open_blockers?: { id: string; title: string; status: PlanStatus }[];
+  chain?: (Person | null)[];
+  current_approver?: Person | null;
+  children?: { id: string; title: string; status: PlanStatus; due_at: string | null }[];
+  parent?: { id: string; title: string } | null;
+  signatures?: { role: string; image: string; signed_at: string; user_name: string | null }[];
 }
 
 /** Fields a client may change with PATCH /plans/:id. */
@@ -111,6 +138,7 @@ export type PlanChanges = Partial<
     PlanDetail,
     | "title" | "body_html" | "tag" | "color" | "x" | "y" | "due_at" | "remind_minutes"
     | "goal" | "done_criteria" | "require_proof" | "approver_id" | "backup_approver_id" | "priority" | "recurrence"
+    | "parent_id" | "goal_id" | "duration_minutes" | "approval_chain"
   >
 >;
 
@@ -169,6 +197,7 @@ export interface Comment {
   body: string;
   created_at: string;
   edited_at: string | null;
+  reactions?: { emoji: string; count: number; mine: boolean }[];
 }
 
 export interface ParsedPlan {
@@ -203,4 +232,112 @@ export interface TemplateInfo {
   key: string;
   count: number;
   name?: string;
+}
+
+export type TeamRole = "owner" | "admin" | "member" | "viewer";
+
+export interface Board {
+  id: string | null;
+  name: string | null;
+  team_id: string | null;
+  team_name: string | null;
+  role: TeamRole;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  created_at: string;
+  my_role: TeamRole;
+  members: (Person & { role: TeamRole; joined_at: string })[];
+}
+
+export interface Goal {
+  id: string;
+  title: string;
+  description: string;
+  target_date: string | null;
+  color: Color;
+  archived_at: string | null;
+  created_at: string;
+  plans_total: number;
+  plans_done: number;
+  progress: number;
+}
+
+export interface FilterQuery {
+  text: string;
+  tags: string[];
+  priorities: Priority[];
+  statuses: PlanStatus[];
+  due: "overdue" | "today" | "week" | "none" | null;
+  mine_only: boolean;
+}
+
+export interface SavedFilter {
+  id: string;
+  name: string;
+  query: FilterQuery;
+}
+
+export interface CanvasItem {
+  id: string;
+  board_id: string | null;
+  kind: "note" | "frame";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  text: string;
+  color: Color;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TimeEntry {
+  id: number;
+  started_at: string;
+  ended_at: string;
+  seconds: number;
+  note: string;
+  manual: number;
+  user_name: string | null;
+}
+
+export interface Session {
+  id: string;
+  user_agent: string;
+  ip: string;
+  created_at: string;
+  last_seen_at: string;
+  current: boolean;
+}
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  prefix: string;
+  created_at: string;
+  last_used_at: string | null;
+  key?: string;
+}
+
+export interface Webhook {
+  id: string;
+  url: string;
+  events: string[];
+  active: boolean;
+  failures: number;
+  last_status: string | null;
+  created_at: string;
+  secret?: string;
+}
+
+export interface MyStep {
+  id: string;
+  text: string;
+  status: StepStatus;
+  due_at: string | null;
+  plan_id: string;
+  plan_title: string;
 }

@@ -11,6 +11,8 @@ import type { MessageKey } from "@/lib/i18n";
 import type { Plan } from "@/lib/types";
 import { Check, Grid, Lock } from "@/components/Icons";
 import { CARD_BG } from "@/components/canvas/PlanCard";
+import { FilterBar } from "@/components/FilterBar";
+import { matches } from "@/lib/filter";
 
 const SECTIONS: { key: Zone | "finished"; label: MessageKey }[] = [
   { key: "overdue", label: "list.overdue" },
@@ -30,17 +32,20 @@ export default function ListPage() {
   const user = useStore((s) => s.user)!;
   const lang = useStore((s) => s.lang);
   const loaded = useStore((s) => s.loaded);
+  const filter = useStore((s) => s.filter);
+  const hasTeams = useStore((s) => s.boards.some((b) => b.team_id));
 
   const groups = useMemo(() => {
     const out: Record<string, Plan[]> = {};
     for (const p of Object.values(planMap)) {
+      if (!matches(p, filter, user.tz, user.id)) continue;
       const key = p.status === "done" || p.status === "cancelled" ? "finished" : zoneOf(p, user.tz);
       (out[key] ??= []).push(p);
     }
     for (const list of Object.values(out)) list.sort((a, b) => (a.due_at ?? "9999").localeCompare(b.due_at ?? "9999"));
     out.finished?.sort((a, b) => (b.completed_at ?? b.updated_at).localeCompare(a.completed_at ?? a.updated_at));
     return out;
-  }, [planMap, user.tz]);
+  }, [planMap, user.tz, user.id, filter]);
 
   const empty = loaded && Object.keys(planMap).length === 0;
   const [archive, setArchive] = useState<Plan[] | null>(null);
@@ -51,6 +56,7 @@ export default function ListPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-8 sm:px-6">
+      <FilterBar teamMode={hasTeams} />
       {empty && (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-line bg-surface p-10 text-center">
           <p className="text-lg font-semibold text-ink-3">{t("list.empty")}</p>

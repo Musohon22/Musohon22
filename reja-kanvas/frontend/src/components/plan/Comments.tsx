@@ -7,6 +7,8 @@ import { fmtDateTime, minutesSince } from "@/lib/time";
 import type { Comment } from "@/lib/types";
 
 /** Discussion between the owner and approvers. @email mentions notify that person. */
+const EMOJI = ["👍", "❤️", "🎉", "✅", "👀", "🙏"];
+
 export function Comments({ planId }: { planId: string }) {
   const t = useT();
   const user = useStore((s) => s.user)!;
@@ -43,6 +45,11 @@ export function Comments({ planId }: { planId: string }) {
     const c = await online(() => api.patch<Comment>(`/api/comments/${id}`, { body: editText.trim() }));
     if (c) setItems((list) => list?.map((x) => (x.id === id ? c : x)) ?? null);
     setEditing(null);
+  }
+
+  async function react(id: string, emoji: string) {
+    const r = await online(() => api.post<{ reactions: Comment["reactions"] }>(`/api/comments/${id}/reactions`, { emoji }));
+    if (r) setItems((list) => list?.map((x) => (x.id === id ? { ...x, reactions: r.reactions } : x)) ?? null);
   }
 
   async function remove(id: string) {
@@ -82,6 +89,38 @@ export function Comments({ planId }: { planId: string }) {
               ) : (
                 <p className="whitespace-pre-wrap break-words text-sm text-ink">{c.body}</p>
               )}
+              <div className="flex flex-wrap items-center gap-1">
+                {(c.reactions ?? []).map((r) => (
+                  <button
+                    key={r.emoji}
+                    type="button"
+                    aria-pressed={r.mine}
+                    onClick={() => void react(c.id, r.emoji)}
+                    className={`flex h-7 items-center gap-1 rounded-full border px-2 text-xs ${r.mine ? "border-accent bg-accent-soft" : "border-line bg-surface"}`}
+                  >
+                    <span aria-hidden="true">{r.emoji}</span>
+                    <span className="font-semibold">{r.count}</span>
+                  </button>
+                ))}
+                <details className="relative">
+                  <summary aria-label="+" className="flex h-7 w-7 cursor-pointer list-none items-center justify-center rounded-full text-sm text-ink-muted hover:bg-paper-3 [&::-webkit-details-marker]:hidden">☺</summary>
+                  <div className="absolute left-0 z-20 mt-1 flex gap-1 rounded-xl border border-line bg-surface p-1 shadow-lift">
+                    {EMOJI.map((e) => (
+                      <button
+                        key={e}
+                        type="button"
+                        className="h-8 w-8 rounded-lg text-base hover:bg-paper-2"
+                        onClick={(ev) => {
+                          (ev.currentTarget.closest("details") as HTMLDetailsElement).removeAttribute("open");
+                          void react(c.id, e);
+                        }}
+                      >
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                </details>
+              </div>
               {mine && editing !== c.id && (
                 <div className="flex gap-3 text-xs font-semibold">
                   {canEdit && <button type="button" className="text-accent-ink" onClick={() => { setEditing(c.id); setEditText(c.body); }}>{t("comments.edit")}</button>}

@@ -9,7 +9,7 @@ export function needsConfirmPanel(plan: Plan): boolean {
 }
 
 /** Submits a plan. When it completes at once, offers a 10-second undo. */
-export async function submitWithUndo(planId: string, body: { final_note?: string; rating?: Rating | null } = {}) {
+export async function submitWithUndo(planId: string, body: { final_note?: string; rating?: Rating | null; signature?: string } = {}) {
   const detail = await planAction(planId, "submit", body);
   if (!detail) return undefined;
   if (detail.status === "done") {

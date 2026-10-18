@@ -2,7 +2,9 @@
 
 Bu ro'yxat zamonaviy rejalash va vazifa ilovalari (Todoist, Things, TickTick, Notion, Linear, Asana, Microsoft To Do, Miro) taqqoslab chiqilgandan keyin tuzilgan. Har bir band — foydalanuvchi uchun haqiqiy foyda beradigan funksiya; mayda texnik bo'laklar alohida sanalmagan.
 
-**Belgilar:** ✅ tayyor · ⏳ keyingi bosqich (yuqori foyda) · 🔭 keyinroq (katta ish yoki maxsus infratuzilma kerak)
+**Belgilar:** ✅ tayyor · ⏳ keyingi bosqich · 🔭 keyinroq (katta ish yoki maxsus infratuzilma kerak)
+
+Qolgan ⏳ bandlar tashqi hisob yoki infratuzilma talab qiladi: Google Calendar ikki tomonlama sinxroni va Google/Apple/OneID kirishi (OAuth kalitlari), Web Push (VAPID va shifrlash kutubxonasi), email'ni rejaga aylantirish (kiruvchi pochta serveri), qo'shimcha tillar (ona tilida so'zlashuvchi tekshiruvi).
 
 ## 1. Reja tuzish
 
@@ -20,11 +22,11 @@ Bu ro'yxat zamonaviy rejalash va vazifa ilovalari (Todoist, Things, TickTick, No
 | ✅ | Shablonlar: 4 ta tayyor + o'zingiz saqlaydiganlar (50 tagacha) |
 | ✅ | Rejadan nusxa olish |
 | ✅ | Rejalar orasida bog'liqlik ("B faqat A dan keyin"), aylana hosil bo'lishiga yo'l qo'yilmaydi |
-| ⏳ | Bosqichlarni sudrab tartiblash |
-| ⏳ | Bosqichlarga alohida muddat va mas'ul |
-| ⏳ | Ichma-ich rejalar (loyiha → rejalar) |
-| ⏳ | Matnga rasm va jadval qo'yish |
-| ⏳ | Ovoz bilan reja qo'shish (brauzer nutqni tanish) |
+| ✅ | Bosqichlarni sudrab tartiblash |
+| ✅ | Bosqichlarga alohida muddat va mas'ul |
+| ✅ | Ichma-ich rejalar (loyiha → rejalar) |
+| ✅ | Matnga rasm va jadval qo'yish |
+| ✅ | Ovoz bilan reja qo'shish (brauzer nutqni tanish) |
 | ⏳ | Email'ni rejaga aylantirish (maxsus manzilga yuborish) |
 | 🔭 | AI yordamchi: rejani bosqichlarga bo'lish, muddat taklif qilish, haftalik xulosa (Claude API) |
 | 🔭 | Hujjat yoki rasmdan reja ajratib olish (OCR) |
@@ -46,12 +48,12 @@ Bu ro'yxat zamonaviy rejalash va vazifa ilovalari (Todoist, Things, TickTick, No
 | ✅ | Ro'yxat ko'rinishi (muddati o'tgan / bugun / ertaga / hafta / keyin / muddatsiz / yakunlangan) |
 | ✅ | Oylik kalendar: kun tanlash, shu kunga tez qo'shish |
 | ✅ | Arxiv |
-| ⏳ | Haftalik kalendar va vaqt bloklari (kunni soatlarga taqsimlash) |
-| ⏳ | Kalendarda sudrab muddatni o'zgartirish |
-| ⏳ | Kanban ko'rinishi (holat ustunlari) |
-| ⏳ | Saqlangan filtrlar (teg + ustuvorlik + holat) |
-| ⏳ | Kanvasda bir nechta "doska" (Ish, Uy, Loyiha X) |
-| ⏳ | Kanvasga erkin matn, strelka va guruh ramkasi chizish |
+| ✅ | Haftalik kalendar va vaqt bloklari (kunni soatlarga taqsimlash) |
+| ✅ | Kalendarda sudrab muddatni o'zgartirish |
+| ✅ | Kanban ko'rinishi (holat ustunlari) |
+| ✅ | Saqlangan filtrlar (teg + ustuvorlik + holat) |
+| ✅ | Kanvasda bir nechta "doska" (Ish, Uy, Loyiha X) |
+| ✅ | Kanvasga erkin yozuv va guruh ramkasi (strelkalar — rejalar bog'liqligi orqali) |
 | 🔭 | Gantt / vaqt chizig'i ko'rinishi |
 | 🔭 | Kanvasni rasm yoki PDF qilib eksport |
 
@@ -70,10 +72,10 @@ Bu ro'yxat zamonaviy rejalash va vazifa ilovalari (Todoist, Things, TickTick, No
 | ✅ | Fokus taymeri (25 daqiqa) va vaqt hisobi; esdan chiqqan taymer 12 soat bilan cheklanadi |
 | ✅ | Vaqtida bajarilmaganlar uchun kunlik oyna: bugunga / sana / bekor qilish |
 | ✅ | Seriya va haftasiga 1 ta dam olish kuni |
-| ⏳ | Elektron imzo bilan tasdiqlash (chiziladigan imzo yoki E-IMZO) |
-| ⏳ | Ko'p bosqichli tasdiqlash zanjiri (avval bo'lim boshlig'i, keyin direktor) |
-| ⏳ | Tasdiqlash akti PDF ko'rinishida (muhr, sana, imzo) |
-| ⏳ | Vaqt hisobini qo'lda kiritish va tahrirlash |
+| ✅ | Chiziladigan imzo bilan tasdiqlash (E-IMZO integratsiyasi — keyinroq) |
+| ✅ | Ko'p bosqichli tasdiqlash zanjiri (avval bo'lim boshlig'i, keyin direktor) |
+| ✅ | Tasdiqlash akti PDF ko'rinishida (muhr, sana, imzo) |
+| ✅ | Vaqt hisobini qo'lda kiritish va tahrirlash |
 | 🔭 | Geolokatsiya yoki foto bilan isbot (dala ishlari uchun) |
 
 ## 4. Hamkorlik
@@ -83,9 +85,9 @@ Bu ro'yxat zamonaviy rejalash va vazifa ilovalari (Todoist, Things, TickTick, No
 | ✅ | Izohlar, @pochta bilan eslatish (faqat rejani ko'ra oladiganlarga) |
 | ✅ | Muddatli ulashish havolasi: faqat ko'rish yoki tahrirlash, bekor qilish |
 | ✅ | Ikki qurilmada tahrirlash: har xil maydonlar birlashadi, bir xil maydonda tanlov |
-| ⏳ | Jamoa / ish maydoni, a'zolar va rollar |
-| ⏳ | Rejani boshqa odamga topshirish (mas'ulni almashtirish) |
-| ⏳ | Izohga fayl biriktirish va reaksiyalar |
+| ✅ | Jamoa / ish maydoni, a'zolar va rollar |
+| ✅ | Rejani boshqa odamga topshirish (mas'ulni almashtirish) |
+| ✅ | Izohlarga reaksiyalar (izohga fayl — keyinroq) |
 | 🔭 | Real vaqtda birga tahrirlash (kursorlar, CRDT) |
 | 🔭 | Telegram bot: bildirishnoma, tez qo'shish, tasdiqlash tugmasi |
 
@@ -95,9 +97,9 @@ Bu ro'yxat zamonaviy rejalash va vazifa ilovalari (Todoist, Things, TickTick, No
 |---|---|
 | ✅ | Ilova ichidagi bildirishnomalar va "Kiruvchi" sahifasi |
 | ✅ | Brauzer bildirishnomalari (ruxsat bilan) |
-| ⏳ | Email: kunlik xulosa, tasdiq so'rovi |
+| ✅ | Email: kunlik xulosa, tasdiq so'rovi |
 | ⏳ | Web Push (sahifa yopiq bo'lsa ham) |
-| ⏳ | "Jim soatlar" va bildirishnoma turlarini tanlash |
+| ✅ | "Jim soatlar" va bildirishnoma turlarini tanlash |
 | 🔭 | Telegram / SMS kanallari |
 
 ## 6. Tahlil
@@ -107,8 +109,8 @@ Bu ro'yxat zamonaviy rejalash va vazifa ilovalari (Todoist, Things, TickTick, No
 | ✅ | 7 / 30 / 90 kunlik hisobot: bajarilgan, yaratilgan, vaqtida bajarilganlar ulushi, o'rtacha kechikish |
 | ✅ | Kunlik grafik (jadval ko'rinishi bilan), hafta kunlari, teglar, vaqt sarfi |
 | ✅ | Joriy va eng uzun seriya |
-| ⏳ | Haftalik "sharh" sahifasi: nima bo'ldi, nima ko'chdi, keyingi hafta rejasi |
-| ⏳ | Maqsadlar (OKR): reja → maqsadga hissa |
+| ✅ | Haftalik "sharh" sahifasi: nima bo'ldi, nima ko'chdi, keyingi hafta rejasi |
+| ✅ | Maqsadlar (OKR): reja → maqsadga hissa |
 | 🔭 | Jamoa bo'yicha tahlil (yuklama, kechikishlar) |
 
 ## 7. Integratsiyalar va ma'lumot
@@ -119,8 +121,8 @@ Bu ro'yxat zamonaviy rejalash va vazifa ilovalari (Todoist, Things, TickTick, No
 | ✅ | JSON zaxira nusxa va tiklash, Excel uchun CSV (formula xavfidan himoyalangan) |
 | ✅ | Server bazasining kunlik zaxira nusxasi (skript) |
 | ⏳ | Google Calendar bilan ikki tomonlama sinxron |
-| ⏳ | Todoist / Trello / CSV'dan import |
-| ⏳ | Ochiq API kalitlari va webhook'lar |
+| ✅ | Todoist / Trello / CSV'dan import |
+| ✅ | Ochiq API kalitlari va webhook'lar |
 | 🔭 | Zapier / Make, Slack |
 
 ## 8. Ishonchlilik va xavfsizlik
@@ -136,10 +138,10 @@ Bu ro'yxat zamonaviy rejalash va vazifa ilovalari (Todoist, Things, TickTick, No
 | ✅ | Hisobni o'chirish: hamma ma'lumot o'chadi, tasdiqlash kutayotgan rejalar egalariga qaytadi |
 | ✅ | Savatcha (30 kun) |
 | ✅ | Baza migratsiyalari |
-| ⏳ | Parolni email orqali tiklash |
-| ⏳ | Ikki bosqichli kirish (TOTP) |
+| ✅ | Parolni email orqali tiklash |
+| ✅ | Ikki bosqichli kirish (TOTP) |
 | ⏳ | Google / Apple / OneID bilan kirish |
-| ⏳ | Faol sessiyalar ro'yxati |
+| ✅ | Faol sessiyalar ro'yxati |
 | 🔭 | PostgreSQL va gorizontal kengayish, fayllar uchun S3 |
 | 🔭 | Audit jurnali eksporti (korporativ mijozlar uchun) |
 
@@ -152,7 +154,7 @@ Bu ro'yxat zamonaviy rejalash va vazifa ilovalari (Todoist, Things, TickTick, No
 | ✅ | Ekran o'quvchilar uchun belgilar, klaviatura bilan to'liq boshqarish, 44 px tugmalar |
 | ✅ | Harakatni kamaytirish sozlamasini hurmat qilish |
 | ✅ | Vaqt mintaqasini hisobga olish (kun chegarasi, eslatmalar, seriya) |
-| ⏳ | Katta shrift rejimi va yuqori kontrast mavzusi |
-| ⏳ | Qisqa video yo'riqnomalar va interaktiv tanishuv |
+| ✅ | Katta shrift rejimi va yuqori kontrast mavzusi |
+| ✅ | Interaktiv tanishuv sayohati (video yo'riqnomalar — keyinroq) |
 | ⏳ | Qozoq, qirg'iz, tojik, turk tillari |
 | 🔭 | Mobil ilova (React Native) va soat ilovasi |

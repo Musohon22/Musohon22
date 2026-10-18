@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { hasKey } from "@/lib/i18n";
 import { loadStats, online, useStore, useT } from "@/lib/store";
 import { fmtDateTime, fmtTime } from "@/lib/time";
-import type { Notification, Plan } from "@/lib/types";
+import type { MyStep, Notification, Plan } from "@/lib/types";
 
 export default function InboxPage() {
   const t = useT();
@@ -14,10 +14,12 @@ export default function InboxPage() {
   const lang = useStore((s) => s.lang);
   const [approvals, setApprovals] = useState<Plan[] | null>(null);
   const [notes, setNotes] = useState<Notification[] | null>(null);
+  const [steps, setSteps] = useState<MyStep[]>([]);
 
   const load = useCallback(() => {
     api.get<{ plans: Plan[] }>("/api/approvals").then((r) => setApprovals(r.plans)).catch(() => setApprovals((a) => a ?? []));
     api.get<{ notifications: Notification[] }>("/api/notifications").then((r) => setNotes(r.notifications)).catch(() => setNotes((n) => n ?? []));
+    api.get<{ steps: MyStep[] }>("/api/my-steps").then((r) => setSteps(r.steps)).catch(() => undefined);
   }, []);
 
   useEffect(load, [load]);
@@ -36,7 +38,12 @@ export default function InboxPage() {
   function text(n: Notification) {
     const kind = n.kind === "approver_silent" && n.data.has_backup ? "approver_silent_backup" : n.kind;
     const key = `notif.${kind}`;
+    const d = n.data as Record<string, unknown>;
     const vars = {
+      team: String(d.team ?? ""),
+      step: String(d.step ?? ""),
+      stage: String(d.stage ?? ""),
+      of: String(d.of ?? ""),
       title: n.data.title ?? "",
       reason: n.data.reason ?? "",
       time: n.data.due_at ? fmtTime(n.data.due_at, user.tz, lang) : "",
@@ -67,6 +74,25 @@ export default function InboxPage() {
           </Link>
         ))}
       </section>
+
+      {steps.length > 0 && (
+        <section aria-labelledby="mysteps" className="flex flex-col gap-3">
+          <h2 id="mysteps" className="eyebrow">{t("inbox.mySteps")}</h2>
+          <ul className="flex flex-col gap-2">
+            {steps.map((st) => (
+              <li key={st.id}>
+                <Link href={`/plan/${st.plan_id}`} className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3 hover:border-line-strong">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold">{st.text}</span>
+                    <span className="text-xs text-ink-muted">{st.plan_title}</span>
+                  </span>
+                  {st.due_at && <span className="font-mono text-xs text-ink-muted">{fmtDateTime(st.due_at, user.tz, lang)}</span>}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section aria-labelledby="notes" className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-4">

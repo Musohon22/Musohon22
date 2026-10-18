@@ -13,7 +13,7 @@ import { useSyncExternalStore } from "react";
 import { api, ApiError, NetworkError, setToken, uuid } from "./api";
 import { translate, errorKey, type MessageKey, type Vars } from "./i18n";
 import type {
-  Conflict, Lang, Plan, PlanChanges, PlanDetail, Stats, Step, StepStatus, User,
+  Board, CanvasItem, Conflict, FilterQuery, Lang, Plan, PlanChanges, PlanDetail, SavedFilter, Stats, Step, StepStatus, User,
 } from "./types";
 
 type OutboxItem =
@@ -23,7 +23,7 @@ type OutboxItem =
   | { id: string; kind: "delete"; planId: string }
   | { id: string; kind: "restore"; planId: string }
   | { id: string; kind: "step_add"; planId: string; stepId: string; text: string; position: number }
-  | { id: string; kind: "step_patch"; planId: string; stepId: string; changes: Partial<Pick<Step, "text" | "status" | "position">> }
+  | { id: string; kind: "step_patch"; planId: string; stepId: string; changes: Partial<Pick<Step, "text" | "status" | "position" | "due_at" | "assignee_id">> }
   | { id: string; kind: "step_delete"; planId: string; stepId: string };
 
 export interface Toast {
@@ -48,9 +48,17 @@ export interface State {
   conflicts: Conflict[];
   stats: Stats | null;
   toasts: Toast[];
+  boards: Board[];
+  /** null = the user's main canvas */
+  board: string | null;
+  items: CanvasItem[];
+  filter: FilterQuery;
+  savedFilters: SavedFilter[];
 }
 
-const LS = { user: "reja.user", lang: "reja.lang", plans: "reja.plans", details: "reja.details", outbox: "reja.outbox" };
+export const EMPTY_FILTER: FilterQuery = { text: "", tags: [], priorities: [], statuses: [], due: null, mine_only: false };
+
+const LS = { user: "reja.user", lang: "reja.lang", plans: "reja.plans", details: "reja.details", outbox: "reja.outbox", board: "reja.board" };
 
 let state: State = {
   ready: false,
@@ -66,6 +74,11 @@ let state: State = {
   conflicts: [],
   stats: null,
   toasts: [],
+  boards: [],
+  board: null,
+  items: [],
+  filter: EMPTY_FILTER,
+  savedFilters: [],
 };
 const listeners = new Set<() => void>();
 
@@ -115,6 +128,7 @@ function persist(patch: Partial<State>) {
   if (typeof window === "undefined" || !state.ready) return;
   if ("user" in patch) write(LS.user, state.user);
   if ("lang" in patch) write(LS.lang, state.lang);
+  if ("board" in patch) write(LS.board, state.board);
   if ("outbox" in patch) write(LS.outbox, state.outbox); // the queue is written at once: it must survive a crash
   if ("plans" in patch || "details" in patch) {
     if (persistTimer) clearTimeout(persistTimer);
@@ -176,6 +190,7 @@ export function boot() {
     plans: read(LS.plans, {}),
     details: read(LS.details, {}),
     outbox: read(LS.outbox, []),
+    board: read<string | null>(LS.board, null),
     online: typeof navigator === "undefined" ? true : navigator.onLine,
   };
   listeners.forEach((l) => l());
@@ -191,14 +206,16 @@ export function boot() {
   if (user) void flush();
 }
 
+const FRESH_WORKSPACE = { boards: [] as Board[], board: null, items: [] as CanvasItem[], filter: EMPTY_FILTER, savedFilters: [] as SavedFilter[] };
+
 export function signedIn(token: string, user: User) {
   setToken(token);
-  set({ user, lang: user.lang, plans: {}, details: {}, outbox: [], conflicts: [], loaded: false, stats: null });
+  set({ user, lang: user.lang, plans: {}, details: {}, outbox: [], conflicts: [], loaded: false, stats: null, ...FRESH_WORKSPACE });
 }
 
 export function signOut() {
   setToken(null);
-  set({ user: null, plans: {}, details: {}, outbox: [], conflicts: [], loaded: false, stats: null });
+  set({ user: null, plans: {}, details: {}, outbox: [], conflicts: [], loaded: false, stats: null, ...FRESH_WORKSPACE });
 }
 
 export function setLang(lang: Lang) {
@@ -377,13 +394,15 @@ export function createPlan(fields: Partial<Plan> & { title: string; x: number; y
     approver_id: null, backup_approver_id: null, my_role: "owner", can_decide: false,
     priority: "normal", recurrence: null, series_id: null, next_occurrence_id: null, archived_at: null,
     tracked_seconds: 0, timer_started_at: null, blocked_by: [],
+    parent_id: null, duration_minutes: null, goal_id: null, board_id: null, approval_stage: 0, approval_chain: [],
     progress: { done: 0, total: steps?.length ?? 0, cancelled: 0 },
     ...rest,
   };
   set({ plans: { ...state.plans, [id]: plan } });
   const body: Record<string, unknown> = {
     id, title: plan.title, x: plan.x, y: plan.y, color: plan.color, tag: plan.tag, due_at: plan.due_at,
-    priority: plan.priority, recurrence: plan.recurrence,
+    priority: plan.priority, recurrence: plan.recurrence, board_id: plan.board_id, parent_id: plan.parent_id,
+    goal_id: plan.goal_id, duration_minutes: plan.duration_minutes,
   };
   if (steps?.length) body.steps = steps;
   enqueue({ id: uuid(), kind: "create", planId: id, body });
@@ -447,7 +466,7 @@ export function addStep(planId: string, text: string) {
   enqueue({ id: uuid(), kind: "step_add", planId, stepId: step.id, text, position: step.position });
 }
 
-export function updateStep(planId: string, stepId: string, changes: { text?: string; status?: StepStatus }) {
+export function updateStep(planId: string, stepId: string, changes: { text?: string; status?: StepStatus; due_at?: string | null; assignee_id?: string | null }) {
   const d = state.details[planId];
   if (!d) return;
   setSteps(planId, d.steps.map((s) => (s.id === stepId ? { ...s, ...changes } : s)));
@@ -629,4 +648,85 @@ export function patchDetail(id: string, changes: Partial<PlanDetail>) {
 export function setAttachments(id: string, attachments: PlanDetail["attachments"]) {
   const d = state.details[id];
   if (d) set({ details: { ...state.details, [id]: { ...d, attachments } } });
+}
+
+
+// ---- boards, canvas items, filters ---------------------------------------------------------
+
+export async function loadBoards() {
+  try {
+    const { boards } = await api.get<{ boards: Board[] }>("/api/boards");
+    const board = boards.some((b) => b.id === state.board) ? state.board : null;
+    set({ boards, board });
+  } catch {
+    /* offline: keep what we had */
+  }
+}
+
+export function setBoard(board: string | null) {
+  set({ board });
+}
+
+/** Plans shown on a canvas: the main canvas holds the user's own plans with no board. */
+export function onBoard(plan: Plan, board: string | null, userId: string): boolean {
+  return board === null ? plan.board_id === null && plan.owner_id === userId : plan.board_id === board;
+}
+
+export async function loadItems() {
+  try {
+    const { items } = await api.get<{ items: CanvasItem[] }>("/api/canvas-items");
+    set({ items });
+  } catch {
+    /* offline */
+  }
+}
+
+export async function saveItem(item: Omit<CanvasItem, "created_at" | "updated_at">) {
+  const exists = state.items.some((i) => i.id === item.id);
+  const now = new Date().toISOString();
+  set({ items: exists ? state.items.map((i) => (i.id === item.id ? { ...i, ...item } : i)) : [...state.items, { ...item, created_at: now, updated_at: now }] });
+  try {
+    if (exists) {
+      const { id, board_id: _b, kind: _k, ...changes } = item;
+      await api.patch(`/api/canvas-items/${id}`, changes);
+    } else await api.post("/api/canvas-items", item);
+  } catch (e) {
+    toastError(e);
+  }
+}
+
+export async function removeItem(id: string) {
+  set({ items: state.items.filter((i) => i.id !== id) });
+  try {
+    await api.del(`/api/canvas-items/${id}`);
+  } catch (e) {
+    toastError(e);
+  }
+}
+
+export function setFilter(filter: FilterQuery) {
+  set({ filter });
+}
+
+export async function loadSavedFilters() {
+  try {
+    const { filters } = await api.get<{ filters: SavedFilter[] }>("/api/filters");
+    set({ savedFilters: filters });
+  } catch {
+    /* offline */
+  }
+}
+
+export function setSavedFilters(savedFilters: SavedFilter[]) {
+  set({ savedFilters });
+}
+
+/** Reorders steps locally at once and on the server (online only: order is easy to redo). */
+export async function reorderSteps(planId: string, ids: string[]) {
+  const d = state.details[planId];
+  if (!d) return;
+  const byId = new Map(d.steps.map((s) => [s.id, s]));
+  setSteps(planId, ids.map((id, position) => ({ ...byId.get(id)!, position })));
+  if (!(await settle(planId))) return;
+  await online(() => api.put(`/api/plans/${planId}/steps/order`, { ids }));
 }

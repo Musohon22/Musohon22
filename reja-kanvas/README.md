@@ -14,7 +14,7 @@ cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 uvicorn app.main:app --reload --port 8000
-python -m unittest discover tests      # 40 ta test
+python -m unittest discover tests      # 58 ta test
 ```
 
 Muhit o'zgaruvchilari (hammasi ixtiyoriy):
@@ -24,6 +24,9 @@ Muhit o'zgaruvchilari (hammasi ixtiyoriy):
 | `REJA_DATA_DIR` | `backend/data` | Baza, yuklangan fayllar va zaxira nusxalar |
 | `REJA_SECRET_KEY` | tasodifiy, `data/secret.key` ga saqlanadi | JWT imzosi |
 | `REJA_FRONTEND_ORIGINS` | `http://localhost:3000` | CORS uchun ruxsat etilgan manzillar (vergul bilan) |
+| `REJA_FRONTEND_URL` | birinchi origin | Email ichidagi havolalar uchun ilova manzili |
+| `REJA_SMTP_HOST`, `REJA_SMTP_PORT`, `REJA_SMTP_USER`, `REJA_SMTP_PASSWORD`, `REJA_SMTP_FROM` | — | Email yuborish (parolni tiklash, bildirishnomalar, kunlik xulosa). Berilmasa, xatlar faqat logga yoziladi |
+| `REJA_WEBHOOK_ALLOW_PRIVATE` | — | `1` bo'lsa, webhook'lar ichki tarmoq va `http://` manzillarga ham yuboriladi (faqat lokal sinov uchun) |
 
 Har kuni zaxira nusxa olish uchun: `python -m scripts.backup` (cron orqali). Oxirgi 14 ta nusxa saqlanadi; `data/uploads` papkasini alohida nusxalang.
 
@@ -42,7 +45,13 @@ npm run dev                     # http://localhost:3000
 |---|---|
 | `/canvas` | Cheksiz kanvas, "Bugun / Ertaga / Shu hafta / Keyinroq" zonalari, sudrash, qidiruv, mini-xarita, "Tartibga solish", bugungi progress va seriya |
 | `/plan/:id` | Word'ga o'xshash hujjat (sarlavha, maqsad, mezon, bosqichlar, formatlangan matn) va 3 qadamli tasdiqlash paneli, tarix |
-| `/calendar` | Oylik kalendar, kunni tanlab tez qo'shish |
+| `/calendar` | Oylik va haftalik kalendar (soat bloklari), sudrab muddatni o'zgartirish |
+| `/kanban` | Doska: holat, ustuvorlik yoki teg bo'yicha ustunlar |
+| `/goals` | Maqsadlar va ularga bog'langan rejalar jarayoni |
+| `/review` | Haftalik sharh: bajarilganlar, kechikkanlar, keyingi hafta |
+| `/teams` | Jamoalar, a'zolar va rollar, jamoa doskalari |
+| `/plan/:id/act` | Chop etiladigan tasdiqlash akti (imzolar bilan) |
+| `/forgot`, `/reset` | Parolni email orqali tiklash |
 | `/analytics` | Bajarilganlar, vaqtida bajarish ulushi, seriya, teglar va vaqt sarfi |
 | Ctrl/Cmd+K | Buyruqlar paneli: "ertaga 15:00 uchrashuv #ish !yuqori" kabi gapdan reja yaratish, qidiruv |
 | `/list` | Xuddi shu rejalar oddiy ro'yxat ko'rinishida (klaviatura va ekran o'quvchilar uchun qulay) |
@@ -84,7 +93,7 @@ npm run dev                     # http://localhost:3000
 
 ## Tekshirilgan va tekshirilmagan qismlar
 
-- **Backend**: 40 ta avtomatik test o'tadi (`python -m unittest discover tests`), server ishga tushirilib, qo'lda ham tekshirildi.
+- **Backend**: 58 ta avtomatik test o'tadi (`python -m unittest discover tests`), server ishga tushirilib, qo'lda ham tekshirildi.
 - **Frontend**: bu muhitda npm registriga kirish yo'q edi, shuning uchun `npm install` va `next build` ishga tushirilmagan. Kod React, Next va TipTap uchun vaqtinchalik tur zaglushkalari bilan TypeScript'da tekshirildi, sof mantiq (vaqt mintaqalari, kirillga o'girish, qidiruv, avtomatik tartiblash) Node'da sinab ko'rildi. Birinchi `npm install && npm run build` da kichik tur xatolari chiqishi mumkin.
 
 ## Keyingi bosqichlar

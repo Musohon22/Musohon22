@@ -86,10 +86,12 @@ export const api = {
   get: <T>(path: string, opts?: Options) => request<T>("GET", path, opts),
   post: <T>(path: string, body?: unknown, opts?: Options) => request<T>("POST", path, { ...opts, body }),
   patch: <T>(path: string, body?: unknown, opts?: Options) => request<T>("PATCH", path, { ...opts, body }),
+  put: <T>(path: string, body?: unknown, opts?: Options) => request<T>("PUT", path, { ...opts, body }),
   del: <T>(path: string, opts?: Options) => request<T>("DELETE", path, opts),
-  upload: <T>(path: string, file: File) => {
+  upload: <T>(path: string, file: File, fields: Record<string, string> = {}) => {
     const form = new FormData();
     form.append("file", file);
+    for (const [k, v] of Object.entries(fields)) form.append(k, v);
     return request<T>("POST", path, { form, timeoutMs: 120000 });
   },
 };

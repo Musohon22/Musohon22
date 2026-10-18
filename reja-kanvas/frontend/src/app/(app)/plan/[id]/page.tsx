@@ -23,6 +23,12 @@ import { Dependencies } from "@/components/plan/Dependencies";
 import { Comments } from "@/components/plan/Comments";
 import { FocusTimer } from "@/components/plan/FocusTimer";
 import { PRIORITIES } from "@/lib/recurrence";
+import { PlanStructure } from "@/components/plan/PlanStructure";
+import { ApprovalChain } from "@/components/plan/ApprovalChain";
+import { TimeEntries } from "@/components/plan/TimeEntries";
+import { boardLabel } from "@/components/BoardSwitcher";
+import { API_URL } from "@/lib/api";
+import type { Attachment, Person, Team } from "@/lib/types";
 import { CARD_BG } from "@/components/canvas/PlanCard";
 
 const COLORS: Color[] = ["yellow", "mint", "lilac", "peach", "sky", "white"];
@@ -60,6 +66,17 @@ export default function PlanPage({ params }: { params: { id: string } }) {
     }
   }, [plan?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const boards = useStore((s) => s.boards);
+  const [teams, setTeams] = useState<Team[]>([]);
+  useEffect(() => {
+    api.get<{ teams: Team[] }>("/api/teams").then((r) => setTeams(r.teams)).catch(() => undefined);
+  }, []);
+  const planBoard = useMemo(() => boards.find((b) => b.id === (plan?.board_id ?? null)), [boards, plan?.board_id]);
+  const teamMembers: Person[] = useMemo(() => {
+    const team = teams.find((tm) => tm.id === planBoard?.team_id);
+    return team ? team.members.filter((m) => m.role !== "viewer").map(({ id, name, email }) => ({ id, name, email })) : [];
+  }, [teams, planBoard]);
+
   const tags = useMemo(
     () => Array.from(new Set(Object.values(allPlans).map((p) => p.tag).filter(Boolean) as string[])).slice(0, 20),
     [allPlans],
@@ -76,7 +93,13 @@ export default function PlanPage({ params }: { params: { id: string } }) {
     );
   }
 
-  const isOwner = plan.my_role === "owner";
+  // the assignee, or any editing member of the plan's team board
+  const isOwner = plan.my_role === "owner" || plan.my_role === "team";
+  const people: Person[] = teamMembers.length ? teamMembers : plan.owner ? [plan.owner] : [];
+  const uploadImage = async (file: File) => {
+    const att = await online(() => api.upload<Attachment>(`/api/plans/${plan.id}/attachments`, file, { inline: "1" }));
+    return att?.url ? `${API_URL}${att.url}` : null;
+  };
   const contentLocked = !isOwner || plan.status === "pending_approval" || plan.status === "done" || plan.status === "cancelled";
   const lockNote =
     plan.status === "done" ? t("plan.lockedDone") : plan.status === "pending_approval" ? t("plan.lockedPending") : plan.status === "cancelled" ? t("plan.lockedCancelled") : null;
@@ -163,6 +186,45 @@ export default function PlanPage({ params }: { params: { id: string } }) {
                 >
                   {t("plan.deletePlan")}
                 </button>
+                {plan.my_role === "owner" && boards.length > 1 && (
+                  <label className="flex flex-col gap-1 border-t border-line-soft px-3 py-2">
+                    <span className="label">{t("board.moveTo")}</span>
+                    <select
+                      className="field h-9"
+                      value={plan.board_id ?? ""}
+                      onChange={async (e) => {
+                        const d = await online(() => api.post<PlanDetail>(`/api/plans/${plan.id}/move-board`, { board_id: e.target.value || null }));
+                        if (d) {
+                          storeDetail(d);
+                          void loadPlans();
+                        }
+                      }}
+                    >
+                      {boards.filter((b) => b.role !== "viewer").map((b) => (
+                        <option key={b.id ?? "p"} value={b.id ?? ""}>{boardLabel(b, t("board.personal"), (n) => t("board.team", { name: n }))}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {plan.board_id && teamMembers.length > 1 && (
+                  <label className="flex flex-col gap-1 px-3 py-2">
+                    <span className="label">{t("plan.assign")}</span>
+                    <select
+                      className="field h-9"
+                      value={plan.owner_id}
+                      onChange={async (e) => {
+                        const d = await online(() => api.post<PlanDetail>(`/api/plans/${plan.id}/assign`, { user_id: e.target.value }));
+                        if (d) {
+                          storeDetail(d);
+                          void loadPlans();
+                          toast(t("plan.assigned"), { tone: "success" });
+                        }
+                      }}
+                    >
+                      {teamMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                  </label>
+                )}
               </div>
             </details>
           )}
@@ -173,6 +235,7 @@ export default function PlanPage({ params }: { params: { id: string } }) {
         <main className="flex min-w-0 flex-[999_1_560px] justify-center px-3 py-6 sm:px-6 sm:py-9">
           <article className="flex w-full max-w-[780px] flex-col gap-5 rounded-md bg-surface px-5 py-8 shadow-paper sm:px-14 sm:py-12">
             {!isOwner && <p className="rounded-lg bg-accent-soft px-3 py-2 text-sm font-semibold text-accent-ink">{t("plan.approverView")}</p>}
+            {plan.owner && plan.owner_id !== user.id && <p className="text-sm text-ink-muted">{t("plan.ownerIs", { name: plan.owner.name })}</p>}
             {lockNote && isOwner && (
               <p className="flex items-center gap-2 rounded-lg bg-paper-2 px-3 py-2 text-sm font-semibold text-ink-3">
                 <Lock size={15} />
@@ -285,6 +348,7 @@ export default function PlanPage({ params }: { params: { id: string } }) {
                   {PRIORITIES.map((p) => <option key={p} value={p}>{t(`priority.${p}`)}</option>)}
                 </select>
               </label>
+              <ApprovalChain plan={plan} disabled={contentLocked} />
               <RecurrencePicker
                 value={plan.recurrence}
                 disabled={contentLocked}
@@ -333,14 +397,20 @@ export default function PlanPage({ params }: { params: { id: string } }) {
 
             <section className="flex flex-col gap-2">
               <h2 className="font-display text-2xl font-bold tracking-tight">{t("plan.steps")}</h2>
-              <StepsList planId={plan.id} steps={plan.steps} editable={!contentLocked} />
+              <StepsList planId={plan.id} steps={plan.steps} editable={!contentLocked} people={people} />
             </section>
 
             <Dependencies plan={plan} editable={!contentLocked} />
 
             <section className="flex flex-col gap-2">
+              <h2 className="font-display text-2xl font-bold tracking-tight">{t("plan.children")}</h2>
+              <PlanStructure plan={plan} editable={isOwner && plan.status !== "cancelled"} />
+            </section>
+
+            <section className="flex flex-col gap-2">
               <h2 className="font-display text-2xl font-bold tracking-tight">{t("plan.notes")}</h2>
               <Editor
+                onUploadImage={contentLocked ? undefined : uploadImage}
                 html={plan.body_html}
                 editable={!contentLocked}
                 placeholder={t("plan.notesPlaceholder")}
@@ -353,6 +423,7 @@ export default function PlanPage({ params }: { params: { id: string } }) {
         <aside className="flex w-full flex-col gap-6 border-t border-line bg-paper-2 p-5 sm:p-6 lg:w-[400px] lg:flex-none lg:border-l lg:border-t-0">
           <ConfirmPanel plan={plan} onChanged={refresh} />
           <FocusTimer plan={plan} />
+          <TimeEntries planId={plan.id} editable={isOwner} />
           <Comments planId={plan.id} />
           {events.length > 0 && (
             <section className="flex flex-col gap-3 border-t border-dashed border-line-strong pt-5">

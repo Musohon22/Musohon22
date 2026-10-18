@@ -11,18 +11,30 @@ import TaskItem from "@tiptap/extension-task-item";
 import TextStyle from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
 import Placeholder from "@tiptap/extension-placeholder";
+import Image from "@tiptap/extension-image";
+import Table from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableHeader from "@tiptap/extension-table-header";
+import TableCell from "@tiptap/extension-table-cell";
 import { t as translate, toast, useT } from "@/lib/store";
-import { LinkIcon, ListIcon, Quote, Redo, Tasks, Undo } from "../Icons";
+import { Grid, LinkIcon, ListIcon, Quote, Redo, Tasks, Undo } from "../Icons";
+
+/** Uploads an image and returns its URL, or null. Given only where images are allowed. */
+export type ImageUploader = (file: File) => Promise<string | null>;
+
+const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
 const COLORS = ["#1B1D22", "#E8590C", "#1E44D6", "#12804A", "#7D3AC1"];
 
-/** Word-like pasting without Word's baggage: styles, classes and Office markup are dropped. */
+/** Word-like pasting without Word's baggage: styles, classes and Office markup are dropped.
+ * Remote <img> tags are dropped too; pasted image *files* are uploaded instead (see handlePaste). */
 function cleanPaste(html: string): string {
   let droppedImages = false;
   const cleaned = html
     .replace(/<!--[\s\S]*?-->/g, "")
     .replace(/<\/?(o|w|v|m):[^>]*>/gi, "")
-    .replace(/<img[^>]*>/gi, () => {
+    .replace(/<img[^>]*>/gi, (tag) => {
+      if (/\/api\/files\/[0-9a-f-]{36}\?sig=/.test(tag)) return tag; // our own uploaded image
       droppedImages = true;
       return "";
     })
@@ -52,13 +64,36 @@ function Sep() {
 }
 
 export function Editor({
-  html, editable, onChange, placeholder,
+  html, editable, onChange, placeholder, onUploadImage,
 }: {
   html: string;
   editable: boolean;
   onChange: (html: string) => void;
   placeholder: string;
+  onUploadImage?: ImageUploader;
 }) {
+  const uploadRef = useRef(onUploadImage);
+  uploadRef.current = onUploadImage;
+  const editorRef = useRef<TipTap | null>(null);
+
+  /** Uploads image files (pasted, dropped or picked) and inserts them at the cursor. */
+  const insertImages = (files: File[], pos?: number) => {
+    const upload = uploadRef.current;
+    const images = files.filter((f) => IMAGE_TYPES.includes(f.type));
+    if (!upload || !images.length) return false;
+    void (async () => {
+      for (const file of images) {
+        toast(translate("ed.uploading"));
+        const src = await upload(file);
+        const ed = editorRef.current;
+        if (src && ed) {
+          const chain = ed.chain().focus();
+          (pos !== undefined ? chain.insertContentAt(pos, { type: "image", attrs: { src } }) : chain.setImage({ src })).run();
+        }
+      }
+    })();
+    return true;
+  };
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -77,10 +112,22 @@ export function Editor({
       TextStyle,
       Color,
       Placeholder.configure({ placeholder }),
+      Image.configure({ inline: false, allowBase64: false }),
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
     editorProps: {
       attributes: { class: "prose-plan min-h-[220px]", "aria-label": placeholder, role: "textbox", "aria-multiline": "true" },
       transformPastedHTML: cleanPaste,
+      handlePaste: (_view, event) => insertImages(Array.from(event.clipboardData?.files ?? [])),
+      handleDrop: (view, event) => {
+        const files = Array.from((event as DragEvent).dataTransfer?.files ?? []);
+        if (!files.length) return false;
+        const at = view.posAtCoords({ left: (event as DragEvent).clientX, top: (event as DragEvent).clientY });
+        return insertImages(files, at?.pos);
+      },
     },
     onUpdate: ({ editor }) => {
       if (timer.current) clearTimeout(timer.current);
@@ -94,6 +141,8 @@ export function Editor({
       }
     },
   });
+
+  editorRef.current = editor;
 
   // Save pending text when leaving the page.
   useEffect(
@@ -119,13 +168,14 @@ export function Editor({
 
   return (
     <div className="flex flex-col gap-3">
-      {editable && editor && <Toolbar editor={editor} />}
+      {editable && editor && <Toolbar editor={editor} onImages={onUploadImage ? (files) => insertImages(files) : undefined} />}
       <EditorContent editor={editor} />
     </div>
   );
 }
 
-function Toolbar({ editor }: { editor: TipTap }) {
+function Toolbar({ editor, onImages }: { editor: TipTap; onImages?: (files: File[]) => void }) {
+  const fileInput = useRef<HTMLInputElement>(null);
   const t = useT();
   const [linkOpen, setLinkOpen] = useState(false);
   const [url, setUrl] = useState("");
@@ -202,6 +252,36 @@ function Toolbar({ editor }: { editor: TipTap }) {
       </Btn>
       <Btn label={t("ed.tasks")} active={editor.isActive("taskList")} onClick={() => chain().toggleTaskList().run()}><Tasks size={17} /></Btn>
       <Btn label={t("ed.quote")} active={editor.isActive("blockquote")} onClick={() => chain().toggleBlockquote().run()}><Quote size={17} /></Btn>
+      <Btn label={t("ed.table")} active={editor.isActive("table")} onClick={() => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}><Grid size={17} /></Btn>
+      {onImages && (
+        <>
+          <Btn label={t("ed.image")} onClick={() => fileInput.current?.click()}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="2" /><path d="m21 17-5-5-9 8" /></svg>
+          </Btn>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            multiple
+            className="sr-only"
+            tabIndex={-1}
+            onChange={(e) => {
+              const files = Array.from((e.target as HTMLInputElement).files ?? []);
+              e.target.value = "";
+              onImages(files);
+            }}
+          />
+        </>
+      )}
+      {editor.isActive("table") && (
+        <span className="flex flex-wrap items-center gap-0.5 rounded-lg bg-paper-2 px-1" role="group" aria-label={t("ed.table")}>
+          <Btn label={t("ed.addRow")} onClick={() => chain().addRowAfter().run()}><span className="text-xs font-bold">+≡</span></Btn>
+          <Btn label={t("ed.addCol")} onClick={() => chain().addColumnAfter().run()}><span className="text-xs font-bold">+⫼</span></Btn>
+          <Btn label={t("ed.delRow")} onClick={() => chain().deleteRow().run()}><span className="text-xs font-bold">−≡</span></Btn>
+          <Btn label={t("ed.delCol")} onClick={() => chain().deleteColumn().run()}><span className="text-xs font-bold">−⫼</span></Btn>
+          <Btn label={t("ed.delTable")} onClick={() => chain().deleteTable().run()}><span className="text-xs font-bold">✕</span></Btn>
+        </span>
+      )}
       <span className="relative">
         <Btn
           label={t("ed.link")}

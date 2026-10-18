@@ -37,6 +37,8 @@ interface Props {
   blocked: boolean;
   dragging: boolean;
   pulse: boolean;
+  /** hidden by the active filter */
+  faded?: boolean;
   lowDetail: boolean;
   editing: boolean;
   onPointerDown: (e: React.PointerEvent, plan: Plan) => void;
@@ -49,7 +51,7 @@ interface Props {
 }
 
 function PlanCardInner(props: Props) {
-  const { plan, tz, lang, selected, actions, blocked, dragging, pulse, lowDetail, editing } = props;
+  const { plan, tz, lang, selected, actions, blocked, dragging, pulse, lowDetail, editing, faded } = props;
   const t = useT();
   const overdue = isOverdue(plan);
   const finished = plan.status === "done";
@@ -80,7 +82,7 @@ function PlanCardInner(props: Props) {
         dragging ? "cursor-grabbing shadow-lift" : "cursor-grab shadow-card"
       } ${selected ? "ring-2 ring-accent ring-offset-2 ring-offset-paper" : "focus-visible:ring-2 focus-visible:ring-accent"} ${
         pulse ? "animate-pulsering" : ""
-      } ${cancelled ? "opacity-60" : ""}`}
+      } ${cancelled ? "opacity-60" : ""} ${faded ? "opacity-20 saturate-0" : ""}`}
     >
       {lowDetail ? (
         <div className={`font-display text-[28px] font-bold leading-tight ${finished || cancelled ? "line-through" : ""}`}>{plan.title}</div>

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api";
+import Link from "next/link";
+import { api, ApiError } from "@/lib/api";
 import { LANGS } from "@/lib/i18n";
 import { errorText, setLang, signedIn, useStore, useT } from "@/lib/store";
 import { browserTimeZone } from "@/lib/time";
@@ -19,6 +20,8 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [needCode, setNeedCode] = useState(false);
+  const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -32,7 +35,7 @@ export default function LoginPage() {
     try {
       const res =
         mode === "login"
-          ? await api.post<{ token: string; user: User }>("/api/auth/login", { email, password }, { auth: false })
+          ? await api.post<{ token: string; user: User }>("/api/auth/login", { email, password, ...(needCode ? { code } : {}) }, { auth: false })
           : await api.post<{ token: string; user: User }>(
               "/api/auth/register",
               { email, name, password, tz: browserTimeZone(), lang },
@@ -41,6 +44,11 @@ export default function LoginPage() {
       signedIn(res.token, res.user);
       router.replace("/canvas");
     } catch (err) {
+      if (err instanceof ApiError && err.code === "totp_required") {
+        setNeedCode(true);
+        setError(null);
+        return;
+      }
       setError(errorText(err));
     } finally {
       setBusy(false);
@@ -139,13 +147,31 @@ export default function LoginPage() {
             />
             {mode === "register" && <span className="text-xs text-ink-muted">{t("auth.passwordHint")}</span>}
           </label>
+          {needCode && mode === "login" && (
+            <label className="flex flex-col gap-1.5">
+              <span className="label">{t("auth.code")}</span>
+              <input
+                className="field font-mono tracking-widest"
+                value={code}
+                autoFocus
+                autoComplete="one-time-code"
+                inputMode="text"
+                maxLength={20}
+                onChange={(e) => setCode(e.target.value)}
+              />
+              <span className="text-xs text-ink-muted">{t("auth.codeHint")}</span>
+            </label>
+          )}
           {error && <p role="alert" className="rounded-lg bg-warn-soft px-3 py-2 text-sm font-semibold text-warn-ink">{error}</p>}
           <button
             className="btn-primary h-12 text-base"
-            disabled={busy || !email || !password || (mode === "register" && (!name || password.length < 8))}
+            disabled={busy || !email || !password || (mode === "register" && (!name || password.length < 8)) || (needCode && !code.trim())}
           >
             {mode === "login" ? t("auth.submitLogin") : t("auth.submitRegister")}
           </button>
+          {mode === "login" && (
+            <Link href="/forgot" className="self-center text-sm font-semibold text-accent-ink underline underline-offset-2">{t("auth.forgot")}</Link>
+          )}
         </form>
       </section>
     </main>

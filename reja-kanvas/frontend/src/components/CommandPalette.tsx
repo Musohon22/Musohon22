@@ -9,6 +9,7 @@ import { normalize } from "@/lib/search";
 import { createPlan, toast, useStore, useT } from "@/lib/store";
 import { fmtDateTime } from "@/lib/time";
 import { toggleTheme } from "@/lib/theme";
+import { useDictation } from "@/lib/dictation";
 import type { MessageKey } from "@/lib/i18n";
 import type { ParsedPlan } from "@/lib/types";
 import { Calendar, Card, Grid, Inbox, ListIcon, Plus, Search, Settings, Target, Trash } from "./Icons";
@@ -44,6 +45,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const [parsed, setParsed] = useState<ParsedPlan | null>(null);
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
+  const voice = useDictation(lang, (spoken) => setText(spoken));
+  const board = useStore((s) => s.board);
   const dialog = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -91,6 +94,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       tag: p?.tag ?? null,
       priority: p?.priority ?? "normal",
       recurrence: p?.recurrence ?? null,
+      board_id: board,
     });
     onClose();
     toast(t("palette.created"), { tone: "success", action: { label: t("card.open"), run: () => router.push(`/plan/${id}`) } });
@@ -155,6 +159,18 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               placeholder={t("palette.placeholder")}
               className="h-14 min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-ink-muted"
             />
+            {voice.supported && (
+              <button
+                type="button"
+                aria-pressed={voice.listening}
+                aria-label={voice.listening ? t("voice.stop") : t("voice.start")}
+                title={voice.listening ? t("voice.listening") : t("voice.start")}
+                onClick={() => (voice.listening ? voice.stop() : voice.start())}
+                className={`flex h-10 w-10 flex-none items-center justify-center rounded-full ${voice.listening ? "animate-pulse bg-warn text-white" : "text-ink-muted hover:bg-paper-3"}`}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
+              </button>
+            )}
           </label>
           {chips.length > 0 && (
             <div className="flex flex-wrap gap-1.5 border-b border-line-soft px-4 py-2">

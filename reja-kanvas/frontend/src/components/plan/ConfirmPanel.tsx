@@ -7,6 +7,7 @@ import { online, planAction, setAttachments, settle, toast, toastError, useStore
 import { durationParts, fmtDateTime } from "@/lib/time";
 import type { Attachment, PlanDetail, Rating } from "@/lib/types";
 import { Check, Lock, Upload, X } from "../Icons";
+import { SignaturePad } from "./SignaturePad";
 
 const MAX_BYTES = 20 * 1024 * 1024;
 const ALLOWED = ["pdf", "jpg", "jpeg", "png", "webp"];
@@ -25,6 +26,7 @@ export function ConfirmPanel({ plan, onChanged }: { plan: PlanDetail; onChanged:
   const [reason, setReason] = useState("");
   const [reopenNote, setReopenNote] = useState("");
   const [reopening, setReopening] = useState(false);
+  const [signature, setSignature] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -32,17 +34,19 @@ export function ConfirmPanel({ plan, onChanged }: { plan: PlanDetail; onChanged:
     setRating(plan.rating);
   }, [plan.id, plan.final_note, plan.rating]);
 
-  const isOwner = plan.my_role === "owner";
+  const isOwner = plan.my_role === "owner" || plan.my_role === "team";
   const { done, total } = plan.progress;
   const stepsOk = done >= total;
-  const proofOk = !plan.require_proof || plan.attachments.length > 0;
+  const proofOk = !plan.require_proof || plan.attachments.some((a) => !a.inline);
   const planMap = useStore((s) => s.plans);
   // Blockers still open, using fresh local status where we have it.
   const waiting = (plan.open_blockers ?? []).filter((b) => {
     const local = planMap[b.id];
     return !local || (local.status !== "done" && local.status !== "cancelled");
   });
-  const ready = stepsOk && proofOk && waiting.length === 0;
+  const childrenOpen = (plan.children ?? []).some((c) => c.status !== "done" && c.status !== "cancelled");
+  const ready = stepsOk && proofOk && waiting.length === 0 && !childrenOpen;
+  const proofFiles = plan.attachments.filter((a) => !a.inline);
 
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -81,9 +85,9 @@ export function ConfirmPanel({ plan, onChanged }: { plan: PlanDetail; onChanged:
   }
 
   const fileList = (removable: boolean) =>
-    plan.attachments.length > 0 && (
+    proofFiles.length > 0 && (
       <ul className="flex flex-col gap-1.5">
-        {plan.attachments.map((a) => (
+        {proofFiles.map((a) => (
           <li key={a.id} className="flex items-center gap-2 rounded-xl bg-paper px-2.5 py-2">
             <span aria-hidden="true" className={`flex h-9 w-8 flex-none items-end justify-center rounded-md pb-1 text-[9px] font-extrabold text-white ${a.mime === "application/pdf" ? "bg-warn" : "bg-accent"}`}>
               {a.filename.split(".").pop()?.toUpperCase()}
@@ -136,6 +140,7 @@ export function ConfirmPanel({ plan, onChanged }: { plan: PlanDetail; onChanged:
             </div>
           </div>
           {plan.rating && <div className="chip self-start bg-surface/70 text-ink">{t(`rating.${plan.rating}`)}</div>}
+          <a href={`/plan/${plan.id}/act`} className="self-start text-sm font-bold underline underline-offset-2">{t("plan.act")}</a>
           {plan.final_note && <p className="text-sm text-ink-2">{plan.final_note}</p>}
           {fileList(false)}
           {(isOwner || plan.my_role === "approver" || plan.my_role === "backup") &&
@@ -203,6 +208,14 @@ export function ConfirmPanel({ plan, onChanged }: { plan: PlanDetail; onChanged:
           <div className="text-sm text-paper/75">{t("confirm.step1")}: {done}/{total}</div>
           {plan.final_note && <p className="rounded-lg bg-surface/10 p-3 text-sm">{plan.final_note}</p>}
           {plan.attachments.length > 0 && <div className="rounded-xl bg-paper p-1 text-ink">{fileList(false)}</div>}
+          {(plan.chain?.length ?? 0) > 1 && (
+            <div className="text-sm text-paper/75">{t("plan.stageN", { n: (plan.approval_stage ?? 0) + 1 })} / {plan.chain!.length}</div>
+          )}
+          {!rejecting && (
+            <div className="rounded-xl bg-paper p-2 text-ink">
+              <SignaturePad label={t("sig.optional")} onChange={setSignature} />
+            </div>
+          )}
           {rejecting ? (
             <form
               className="flex flex-col gap-2"
@@ -233,7 +246,7 @@ export function ConfirmPanel({ plan, onChanged }: { plan: PlanDetail; onChanged:
             </form>
           ) : (
             <div className="flex gap-2">
-              <button type="button" className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-paper font-extrabold text-ink disabled:opacity-50" disabled={busy || !reachable} onClick={() => void run(() => planAction(plan.id, "approve"))}>
+              <button type="button" className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-paper font-extrabold text-ink disabled:opacity-50" disabled={busy || !reachable} onClick={() => void run(() => planAction(plan.id, "approve", signature ? { signature } : {}))}>
                 <Check size={18} />
                 {t("confirm.approve")}
               </button>
@@ -292,6 +305,7 @@ export function ConfirmPanel({ plan, onChanged }: { plan: PlanDetail; onChanged:
               <span className="text-xs text-ink-muted">{t("confirm.uploadHint")}</span>
             </Step>
             <Step n={3} ok={!!note.trim()} title={t("confirm.step3")} badge={t("confirm.optional")}>
+              <SignaturePad label={t("sig.optional")} onChange={setSignature} />
               <label>
                 <span className="sr-only">{t("confirm.step3")}</span>
                 <textarea
@@ -324,7 +338,7 @@ export function ConfirmPanel({ plan, onChanged }: { plan: PlanDetail; onChanged:
             <button
               type="button"
               disabled={!ready || busy || !reachable}
-              onClick={() => void run(() => submitWithUndo(plan.id, { final_note: note.trim(), rating }))}
+              onClick={() => void run(() => submitWithUndo(plan.id, { final_note: note.trim(), rating, ...(signature ? { signature } : {}) }))}
               className="btn-primary h-14 text-base"
             >
               {ready ? <Check size={18} /> : <Lock size={18} />}
@@ -336,6 +350,8 @@ export function ConfirmPanel({ plan, onChanged }: { plan: PlanDetail; onChanged:
                 : !ready
                   ? waiting.length
                     ? t("deps.waiting", { titles: waiting.map((w) => `«${w.title}»`).join(", ") })
+                    : childrenOpen
+                    ? t("err.children_open")
                     : !stepsOk
                     ? t("err.steps_incomplete")
                     : t("err.proof_required")

@@ -8,6 +8,8 @@ import { loadPlans, loadStats, online, setUser, signOut, toast, toastError, useS
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
 import type { Lang, User } from "@/lib/types";
 import { Copy } from "@/components/Icons";
+import { ApiKeys, Sessions, TwoFactor, Webhooks } from "@/components/settings/SecuritySettings";
+import { ImportOther, PrefsSettings } from "@/components/settings/PrefsSettings";
 
 const NOTIFY_KEY = "reja.notify";
 
@@ -171,6 +173,8 @@ export default function SettingsPage() {
         </div>
       </Card>
 
+      <PrefsSettings />
+
       <Card title={t("settings.notifications")}>
         <p className="text-sm text-ink-3">{t("settings.notifHint")}</p>
         {notify === "on" && <p className="font-semibold text-ok">{t("settings.notifOn")}</p>}
@@ -237,6 +241,10 @@ export default function SettingsPage() {
         </button>
       </Card>
 
+      <ImportOther />
+      <TwoFactor />
+      <Sessions />
+
       <Card title={t("settings.security")}>
         <form onSubmit={changePassword} className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5">
@@ -250,20 +258,10 @@ export default function SettingsPage() {
           </label>
           <button className="btn-dark self-start" disabled={!pw.current || pw.next.length < 8}>{t("settings.changePassword")}</button>
         </form>
-        <button
-          type="button"
-          className="btn self-start"
-          onClick={async () => {
-            const r = await online(() => api.post<{ token: string }>("/api/me/logout-all"));
-            if (r) {
-              setToken(r.token);
-              toast(t("settings.loggedOutAll"), { tone: "success" });
-            }
-          }}
-        >
-          {t("settings.logoutAll")}
-        </button>
       </Card>
+
+      <ApiKeys />
+      <Webhooks />
 
       <Card title={t("settings.danger")} danger>
         <p className="text-sm text-ink-3">{t("settings.deleteHint")}</p>
