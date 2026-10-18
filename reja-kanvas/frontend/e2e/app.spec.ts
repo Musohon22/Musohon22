@@ -111,7 +111,7 @@ test("two-step sign-in", async ({ page }) => {
   await page.getByLabel("Tasdiqlash kodi").fill(totp(secret));
   await page.getByRole("button", { name: "Kodni tasdiqlash va yoqish" }).click();
   await expect(page.getByText(/Zaxira kodlar/)).toBeVisible();
-  await page.getByRole("button", { name: "Profil menyusi" }).click();
+  await page.locator("header summary").click();
   await page.getByRole("button", { name: "Chiqish" }).click();
   await expect(page).toHaveURL(/\/login/);
   await login(page, email, "parol12345", totp(secret));
