@@ -41,24 +41,25 @@ def verify_password(password: str, stored: str) -> bool:
         return False
 
 
-def create_token(user_id: str) -> str:
+def create_token(user_id: str, version: int = 0) -> str:
     issued = timeutil.now()
     payload = {
         "sub": user_id,
+        "ver": version,
         "iat": int(issued.timestamp()),
         "exp": int((issued + timedelta(days=config.TOKEN_TTL_DAYS)).timestamp()),
     }
     return jwt.encode(payload, _key(), algorithm="HS256")
 
 
-def decode_token(token: str) -> str:
+def decode_token(token: str) -> tuple[str, int]:
     try:
         payload = jwt.decode(token, _key(), algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
         raise ApiError(401, "token_expired")
     except jwt.PyJWTError:
         raise ApiError(401, "invalid_token")
-    return payload["sub"]
+    return payload["sub"], int(payload.get("ver", 0))
 
 
 class LoginLimiter:

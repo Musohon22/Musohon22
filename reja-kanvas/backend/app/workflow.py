@@ -5,7 +5,7 @@ import math
 import sqlite3
 from datetime import timedelta
 
-from . import config, timeutil
+from . import config, dependencies, recurrence, timeutil, tracking
 from .errors import ApiError, forbidden
 from .plans import (
     LOCKED_STATUSES, load, load_for, log_event, notify, progress_map, purge_expired,
@@ -31,9 +31,15 @@ def _late_minutes(plan: sqlite3.Row) -> int | None:
     return math.floor(late) if late >= 1 else 0
 
 
+def _owner_tz(conn, plan: sqlite3.Row) -> str:
+    return conn.execute("SELECT tz FROM users WHERE id = ?", (plan["owner_id"],)).fetchone()["tz"]
+
+
 def readiness(conn, plan: sqlite3.Row) -> list[str]:
     """What still blocks confirming this plan, as stable codes the UI explains."""
     blockers = []
+    if dependencies.open_blockers(conn, plan["id"]):
+        blockers.append("blocked_by_open")
     prog = progress_map(conn, [plan["id"]])[plan["id"]]
     if prog["done"] < prog["total"]:
         blockers.append("steps_incomplete")
@@ -50,7 +56,12 @@ def submit(conn, plan: sqlite3.Row, user_id: str, data) -> dict:
     blockers = readiness(conn, plan)
     if blockers:
         prog = progress_map(conn, [plan["id"]])[plan["id"]]
-        raise ApiError(400, blockers[0], blockers=blockers, remaining=prog["total"] - prog["done"])
+        raise ApiError(
+            400, blockers[0], blockers=blockers, remaining=prog["total"] - prog["done"],
+            open_blockers=dependencies.open_blockers(conn, plan["id"]),
+        )
+    if plan["timer_started_at"]:
+        tracking.stop(conn, plan["owner_id"])
     now = stamp()
     late = _late_minutes(plan)
     common = dict(final_note=data.final_note, rating=data.rating, late_minutes=late, submitted_at=now, return_reason=None)
@@ -61,6 +72,7 @@ def submit(conn, plan: sqlite3.Row, user_id: str, data) -> dict:
     else:
         _update(conn, plan["id"], status="done", completed_at=now, **common)
         log_event(conn, plan["id"], user_id, "completed", late_minutes=late)
+        recurrence.spawn_next(conn, load(conn, plan["id"]), _owner_tz(conn, plan))
     return serialize(conn, load(conn, plan["id"]), user_id, detail=True)
 
 
@@ -70,6 +82,7 @@ def approve(conn, plan: sqlite3.Row, user_id: str) -> dict:
     # The work counts on the day it was submitted, not the day someone got round to approving it.
     _update(conn, plan["id"], status="done", completed_at=plan["submitted_at"], approved_at=now, approved_by=user_id)
     log_event(conn, plan["id"], user_id, "approved")
+    recurrence.spawn_next(conn, load(conn, plan["id"]), _owner_tz(conn, plan))
     notify(conn, plan["owner_id"], plan["id"], "approved", title=plan["title"])
     return serialize(conn, load(conn, plan["id"]), user_id, detail=True)
 
@@ -111,6 +124,8 @@ def reopen(conn, plan: sqlite3.Row, user_id: str, data) -> dict:
         raise ApiError(409, "invalid_status", status=plan["status"])
     _update(conn, plan["id"], status="active", **_CLEAR_COMPLETION)
     log_event(conn, plan["id"], user_id, kind, note=data.note)
+    if plan["status"] == "done":
+        recurrence.retract_next(conn, plan)
     if plan["approved_by"] and plan["approved_by"] != user_id:
         notify(conn, plan["approved_by"], plan["id"], "reopened", title=plan["title"])
     if plan["status"] == "pending_approval":

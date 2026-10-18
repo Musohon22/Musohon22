@@ -13,12 +13,13 @@ from .translit import normalize
 # Fields whose concurrent edits are detected; x/y are last-write-wins (dragging must never conflict).
 TRACKED = (
     "title", "body_html", "tag", "color", "due_at", "remind_minutes", "goal",
-    "done_criteria", "require_proof", "approver_id", "backup_approver_id",
+    "done_criteria", "require_proof", "approver_id", "backup_approver_id", "priority", "recurrence",
 )
 POSITION = ("x", "y")
 # Once submitted or confirmed, the content is frozen until the plan is reopened.
 LOCKED_STATUSES = ("pending_approval", "done")
-EDITABLE_WHEN_LOCKED = {"color", "tag", "x", "y"}
+EDITABLE_WHEN_LOCKED = {"color", "tag", "x", "y", "priority"}
+PRIORITY_ORDER = "CASE priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END"
 
 
 def new_id() -> str:
@@ -74,6 +75,16 @@ def progress_map(conn, plan_ids: list[str]) -> dict[str, dict]:
     return result
 
 
+def blockers_map(conn, plan_ids: list[str]) -> dict[str, list[str]]:
+    result: dict[str, list[str]] = {pid: [] for pid in plan_ids}
+    if not plan_ids:
+        return result
+    marks = ",".join("?" * len(plan_ids))
+    for row in conn.execute(f"SELECT plan_id, blocker_id FROM dependencies WHERE plan_id IN ({marks})", plan_ids):
+        result[row["plan_id"]].append(row["blocker_id"])
+    return result
+
+
 def role_of(plan: sqlite3.Row, user_id: str) -> str | None:
     if plan["owner_id"] == user_id:
         return "owner"
@@ -93,7 +104,10 @@ def can_decide(plan: sqlite3.Row, user_id: str) -> bool:
     return plan["backup_approver_id"] == user_id and plan["escalated_at"] is not None
 
 
-def serialize(conn, plan: sqlite3.Row, user_id: str | None, *, detail: bool = False, progress: dict | None = None) -> dict:
+def serialize(
+    conn, plan: sqlite3.Row, user_id: str | None, *, detail: bool = False,
+    progress: dict | None = None, blocked_by: list[str] | None = None,
+) -> dict:
     data = {
         k: plan[k]
         for k in (
@@ -101,10 +115,13 @@ def serialize(conn, plan: sqlite3.Row, user_id: str | None, *, detail: bool = Fa
             "done_criteria", "status", "submitted_at", "completed_at", "approved_at",
             "late_minutes", "rating", "final_note", "return_reason", "escalated_at",
             "version", "deleted_at", "created_at", "updated_at", "owner_id",
-            "approver_id", "backup_approver_id",
+            "approver_id", "backup_approver_id", "priority", "series_id", "next_occurrence_id",
+            "archived_at", "tracked_seconds", "timer_started_at",
         )
     }
     data["require_proof"] = bool(plan["require_proof"])
+    data["recurrence"] = json.loads(plan["recurrence"]) if plan["recurrence"] else None
+    data["blocked_by"] = blocked_by if blocked_by is not None else blockers_map(conn, [plan["id"]])[plan["id"]]
     data["progress"] = progress or progress_map(conn, [plan["id"]])[plan["id"]]
     if user_id:
         data["my_role"] = role_of(plan, user_id)
@@ -169,16 +186,19 @@ def _check_people(conn, owner_id: str, approver_id: str | None, backup_id: str |
         raise ApiError(400, "backup_same_as_approver")
 
 
-def list_for_owner(conn, user_id: str, q: str | None = None) -> list[dict]:
+def list_for_owner(conn, user_id: str, q: str | None = None, *, archived: bool = False) -> list[dict]:
     sql = "SELECT * FROM plans WHERE owner_id = ? AND deleted_at IS NULL"
+    sql += " AND archived_at IS NOT NULL" if archived else " AND archived_at IS NULL"
     args: list = [user_id]
     if q:
         sql += " AND search_key LIKE ?"
         args.append("%" + normalize(q).replace("%", "").replace("_", "") + "%")
-    sql += " ORDER BY COALESCE(due_at, '9999'), created_at"
+    sql += f" ORDER BY COALESCE(due_at, '9999'), {PRIORITY_ORDER}, created_at"
     rows = conn.execute(sql, args).fetchall()
-    prog = progress_map(conn, [r["id"] for r in rows])
-    return [serialize(conn, r, user_id, progress=prog[r["id"]]) for r in rows]
+    ids = [r["id"] for r in rows]
+    prog = progress_map(conn, ids)
+    deps = blockers_map(conn, ids)
+    return [serialize(conn, r, user_id, progress=prog[r["id"]], blocked_by=deps[r["id"]]) for r in rows]
 
 
 def list_awaiting_me(conn, user_id: str) -> list[dict]:
@@ -217,13 +237,13 @@ def create(conn, user_id: str, data) -> dict:
     now = stamp()
     conn.execute(
         """INSERT INTO plans (id, owner_id, title, body_html, tag, color, x, y, due_at, remind_minutes,
-           goal, done_criteria, require_proof, approver_id, backup_approver_id, search_key,
-           created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+           goal, done_criteria, require_proof, approver_id, backup_approver_id, priority, recurrence,
+           search_key, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (
             plan_id, user_id, data.title, body, data.tag, data.color, data.x, data.y,
             timeutil.to_iso(data.due_at), data.remind_minutes, data.goal, data.done_criteria,
-            int(data.require_proof), data.approver_id, data.backup_approver_id,
-            _search_key(data.title, body, data.tag, data.goal), now, now,
+            int(data.require_proof), data.approver_id, data.backup_approver_id, data.priority,
+            recurrence_json(data.recurrence), _search_key(data.title, body, data.tag, data.goal), now, now,
         ),
     )
     for pos, text in enumerate(data.steps):
@@ -235,7 +255,16 @@ def create(conn, user_id: str, data) -> dict:
     return serialize(conn, load(conn, plan_id), user_id, detail=True)
 
 
+def recurrence_json(value) -> str | None:
+    if value is None:
+        return None
+    data = value.model_dump(mode="json") if hasattr(value, "model_dump") else value
+    return json.dumps(data, sort_keys=True)
+
+
 def _normalize_value(field: str, value):
+    if field == "recurrence":
+        return recurrence_json(value)
     if field == "due_at":
         return timeutil.to_iso(value)
     if field == "require_proof":

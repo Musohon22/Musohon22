@@ -4,7 +4,7 @@ from pathlib import Path
 
 from . import config
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -117,6 +117,55 @@ CREATE TABLE IF NOT EXISTS meta (
 """
 
 
+# Ordered, append-only. Each entry upgrades the schema by one version; never edit a released one.
+MIGRATIONS: dict[int, list[str]] = {
+    2: [
+        "ALTER TABLE plans ADD COLUMN priority TEXT NOT NULL DEFAULT 'normal'",
+        "ALTER TABLE plans ADD COLUMN recurrence TEXT",
+        "ALTER TABLE plans ADD COLUMN series_id TEXT",
+        "ALTER TABLE plans ADD COLUMN next_occurrence_id TEXT",
+        "ALTER TABLE plans ADD COLUMN archived_at TEXT",
+        "ALTER TABLE plans ADD COLUMN tracked_seconds INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE plans ADD COLUMN timer_started_at TEXT",
+        "ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN ics_token TEXT",
+        """CREATE TABLE IF NOT EXISTS dependencies (
+            plan_id TEXT NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            blocker_id TEXT NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (plan_id, blocker_id)
+        )""",
+        "CREATE INDEX IF NOT EXISTS dependencies_blocker ON dependencies(blocker_id)",
+        """CREATE TABLE IF NOT EXISTS comments (
+            id TEXT PRIMARY KEY,
+            plan_id TEXT NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+            body TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            edited_at TEXT
+        )""",
+        "CREATE INDEX IF NOT EXISTS comments_plan ON comments(plan_id, created_at)",
+        """CREATE TABLE IF NOT EXISTS user_templates (
+            id TEXT PRIMARY KEY,
+            owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            data TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )""",
+        """CREATE TABLE IF NOT EXISTS time_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            plan_id TEXT NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            started_at TEXT NOT NULL,
+            ended_at TEXT NOT NULL,
+            seconds INTEGER NOT NULL
+        )""",
+        "CREATE INDEX IF NOT EXISTS time_entries_user ON time_entries(user_id, started_at)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS users_ics_token ON users(ics_token)",
+    ],
+}
+
+
 def connect(path: Path | None = None) -> sqlite3.Connection:
     path = Path(path or config.DB_PATH)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -132,10 +181,12 @@ def init_db(path: Path | None = None) -> None:
     conn = connect(path)
     try:
         conn.executescript(SCHEMA)
-        conn.execute(
-            "INSERT OR IGNORE INTO meta(key, value) VALUES ('schema_version', ?)",
-            (str(SCHEMA_VERSION),),
-        )
+        conn.execute("INSERT OR IGNORE INTO meta(key, value) VALUES ('schema_version', '1')")
+        current = int(conn.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()[0])
+        for version in sorted(v for v in MIGRATIONS if v > current):
+            for statement in MIGRATIONS[version]:
+                conn.execute(statement)
+            conn.execute("UPDATE meta SET value = ? WHERE key = 'schema_version'", (str(version),))
         conn.commit()
     finally:
         conn.close()

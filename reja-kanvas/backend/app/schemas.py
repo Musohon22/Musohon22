@@ -11,6 +11,7 @@ Color = Literal["yellow", "mint", "lilac", "peach", "sky", "white"]
 Lang = Literal["uz", "uz-Cyrl", "ru", "en"]
 StepStatus = Literal["todo", "done", "cancelled"]
 Rating = Literal["excellent", "good", "partial"]
+Priority = Literal["low", "normal", "high", "urgent"]
 
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 COORD = 100_000
@@ -77,6 +78,23 @@ class MeUpdate(Model):
         return v
 
 
+class Recurrence(Model):
+    """daily / weekly (optionally on given weekdays, 0 = Monday) / monthly, every `interval` units,
+    optionally until a date (inclusive)."""
+
+    freq: Literal["daily", "weekly", "monthly"]
+    interval: int = Field(default=1, ge=1, le=30)
+    weekdays: list[int] = Field(default_factory=list, max_length=7)
+    until: Optional[Date] = None
+
+    @field_validator("weekdays")
+    @classmethod
+    def _weekdays(cls, v: list[int]) -> list[int]:
+        if any(d < 0 or d > 6 for d in v):
+            raise ValueError("weekday must be 0..6")
+        return sorted(set(v))
+
+
 class _PlanFields(Model):
     title: str = Field(min_length=1, max_length=200)
     body_html: str = Field(default="", max_length=200_000)
@@ -91,6 +109,8 @@ class _PlanFields(Model):
     require_proof: bool = False
     approver_id: Optional[str] = None
     backup_approver_id: Optional[str] = None
+    priority: Priority = "normal"
+    recurrence: Optional[Recurrence] = None
 
     @field_validator("due_at")
     @classmethod
@@ -139,6 +159,8 @@ class PlanPatch(Model):
     require_proof: Optional[bool] = None
     approver_id: Optional[str] = None
     backup_approver_id: Optional[str] = None
+    priority: Optional[Priority] = None
+    recurrence: Optional[Recurrence] = None
 
     @field_validator("due_at")
     @classmethod
@@ -152,7 +174,7 @@ class PlanPatch(Model):
 
     def changes(self) -> dict:
         data = {k: getattr(self, k) for k in self.model_fields_set if k != "base_version"}
-        for required in ("title", "color", "x", "y", "goal", "done_criteria", "require_proof", "body_html"):
+        for required in ("title", "color", "x", "y", "goal", "done_criteria", "require_proof", "body_html", "priority"):
             if required in data and data[required] is None:
                 raise ValueError(f"{required} cannot be null")
         return data
@@ -223,5 +245,36 @@ class ReadNotifications(Model):
     ids: Optional[list[int]] = Field(default=None, max_length=500)
 
 
-class ApplyTemplate(Model):
-    pass
+class DependencyIn(Model):
+    blocker_id: str
+
+    @field_validator("blocker_id")
+    @classmethod
+    def _id(cls, v):
+        return _uuid(v)
+
+
+class CommentIn(Model):
+    body: str = Field(min_length=1, max_length=2000)
+
+
+class TemplateSave(Model):
+    name: str = Field(min_length=1, max_length=60)
+
+
+class PasswordChange(Model):
+    current: str = Field(max_length=128)
+    new: str = Field(min_length=8, max_length=128)
+
+
+class DeleteAccount(Model):
+    password: str = Field(max_length=128)
+
+
+class ParseIn(Model):
+    text: str = Field(min_length=1, max_length=300)
+
+
+class ImportIn(Model):
+    version: int = 1
+    plans: list[dict] = Field(max_length=2000)

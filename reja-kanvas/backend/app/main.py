@@ -10,10 +10,13 @@ from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-from starlette.responses import FileResponse, JSONResponse, Response
+from starlette.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from starlette.routing import Route
 
-from . import attachments, config, db, plans, security, shares, stats, templates, workflow
+from . import (
+    account, analytics, attachments, comments, config, db, dependencies, exporting, extras, plans,
+    quickadd, security, shares, stats, templates, tracking, workflow,
+)
 from . import schemas as s
 from .errors import ApiError, not_found
 
@@ -54,9 +57,10 @@ def _current_user(request: Request, conn) -> sqlite3.Row:
     header = request.headers.get("authorization", "")
     if not header.lower().startswith("bearer "):
         raise ApiError(401, "auth_required")
-    user_id = security.decode_token(header[7:].strip())
+    user_id, version = security.decode_token(header[7:].strip())
     user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-    if user is None:
+    # A password change or "sign out everywhere" bumps token_version and voids older tokens.
+    if user is None or user["token_version"] != version:
         raise ApiError(401, "invalid_token")
     return user
 
@@ -92,7 +96,7 @@ async def login(request, conn, user, data):
         security.login_limiter.fail(data.email)
         raise ApiError(401, "bad_credentials")
     security.login_limiter.reset(data.email)
-    return {"token": security.create_token(row["id"]), "user": _me(row)}
+    return {"token": security.create_token(row["id"], row["token_version"]), "user": _me(row)}
 
 
 @endpoint
@@ -121,7 +125,8 @@ async def lookup_user(request, conn, user, data):
 
 @endpoint
 async def list_plans(request, conn, user, data):
-    return {"plans": plans.list_for_owner(conn, user["id"], request.query_params.get("q"))}
+    archived = request.query_params.get("archived") == "1"
+    return {"plans": plans.list_for_owner(conn, user["id"], request.query_params.get("q"), archived=archived)}
 
 
 @endpoint(body=s.PlanCreate)
@@ -134,6 +139,7 @@ async def get_plan(request, conn, user, data):
     plan = plans.load_for(conn, _pid(request), user["id"])
     out = plans.serialize(conn, plan, user["id"], detail=True)
     out["blockers"] = workflow.readiness(conn, plan)
+    out["open_blockers"] = dependencies.open_blockers(conn, plan["id"])
     return out
 
 
@@ -365,12 +371,168 @@ async def read_notifications(request, conn, user, data):
 
 @endpoint
 async def list_templates(request, conn, user, data):
-    return {"templates": templates.catalog()}
+    return {"templates": templates.catalog(), "mine": extras.list_templates(conn, user["id"])}
 
 
 @endpoint
 async def apply_template(request, conn, user, data):
-    return {"plans": templates.apply(conn, user, request.path_params["key"])}, 201
+    key = request.path_params["key"]
+    if key.startswith("u:"):
+        return {"plans": extras.apply_template(conn, user, key)}, 201
+    return {"plans": templates.apply(conn, user, key)}, 201
+
+
+@endpoint
+async def delete_my_template(request, conn, user, data):
+    extras.delete_template(conn, user["id"], request.path_params["key"])
+    return None
+
+
+# ---- new: dependencies, comments, timer, duplicate, archive -------------------------------
+
+@endpoint(body=s.DependencyIn)
+async def add_dependency(request, conn, user, data):
+    plan = plans.load_for(conn, _pid(request), user["id"], "edit")
+    return {"blocked_by": dependencies.add(conn, plan, user["id"], data.blocker_id)}, 201
+
+
+@endpoint
+async def remove_dependency(request, conn, user, data):
+    plan = plans.load_for(conn, _pid(request), user["id"], "edit")
+    return {"blocked_by": dependencies.remove(conn, plan, user["id"], request.path_params["blocker_id"])}
+
+
+@endpoint
+async def list_comments(request, conn, user, data):
+    return {"comments": comments.list_for(conn, plans.load_for(conn, _pid(request), user["id"]))}
+
+
+@endpoint(body=s.CommentIn)
+async def add_comment(request, conn, user, data):
+    return comments.add(conn, plans.load_for(conn, _pid(request), user["id"]), user["id"], data.body), 201
+
+
+@endpoint(body=s.CommentIn)
+async def edit_comment(request, conn, user, data):
+    return comments.edit(conn, comments.load_own(conn, request.path_params["comment_id"], user["id"]), data.body)
+
+
+@endpoint
+async def delete_comment(request, conn, user, data):
+    comments.delete(conn, comments.load_own(conn, request.path_params["comment_id"], user["id"]))
+    return None
+
+
+@endpoint
+async def timer_start(request, conn, user, data):
+    plan = plans.load_for(conn, _pid(request), user["id"], "edit")
+    tracking.start(conn, plan, user["id"])
+    return plans.serialize(conn, plans.load(conn, plan["id"]), user["id"], detail=True)
+
+
+@endpoint
+async def timer_stop(request, conn, user, data):
+    plan = plans.load_for(conn, _pid(request), user["id"], "edit")
+    seconds = tracking.stop(conn, user["id"]) if plan["timer_started_at"] else 0
+    out = plans.serialize(conn, plans.load(conn, plan["id"]), user["id"], detail=True)
+    out["booked_seconds"] = seconds
+    return out
+
+
+@endpoint
+async def duplicate_plan(request, conn, user, data):
+    return extras.duplicate(conn, plans.load_for(conn, _pid(request), user["id"], "edit"), user["id"]), 201
+
+
+@endpoint(body=s.TemplateSave)
+async def save_as_template(request, conn, user, data):
+    plan = plans.load_for(conn, _pid(request), user["id"], "edit")
+    return extras.save_template(conn, plan, user["id"], data.name), 201
+
+
+@endpoint
+async def archive_plan(request, conn, user, data):
+    return extras.archive(conn, plans.load_for(conn, _pid(request), user["id"], "edit"), user["id"], True)
+
+
+@endpoint
+async def unarchive_plan(request, conn, user, data):
+    return extras.archive(conn, plans.load_for(conn, _pid(request), user["id"], "edit"), user["id"], False)
+
+
+@endpoint
+async def archive_finished(request, conn, user, data):
+    return {"archived": extras.archive_finished(conn, user["id"])}
+
+
+# ---- new: quick add, analytics, export/import, calendar, account --------------------------
+
+@endpoint(body=s.ParseIn)
+async def parse_text(request, conn, user, data):
+    return quickadd.parse(data.text, user["tz"])
+
+
+@endpoint
+async def get_analytics(request, conn, user, data):
+    try:
+        days = min(365, max(7, int(request.query_params.get("days", "30"))))
+    except ValueError:
+        days = 30
+    return analytics.report(conn, user, days)
+
+
+@endpoint
+async def export_json(request, conn, user, data):
+    return JSONResponse(
+        exporting.export_json(conn, user),
+        headers={"Content-Disposition": 'attachment; filename="reja-export.json"'},
+    )
+
+
+@endpoint
+async def export_csv(request, conn, user, data):
+    return PlainTextResponse(
+        exporting.export_csv(conn, user),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="reja-export.csv"'},
+    )
+
+
+@endpoint(body=s.ImportIn)
+async def import_json(request, conn, user, data):
+    return exporting.import_json(conn, user, data), 201
+
+
+@endpoint
+async def calendar_link(request, conn, user, data):
+    rotate = request.method == "POST"
+    return {"token": exporting.ics_token(conn, user, rotate=rotate)}
+
+
+@endpoint(auth=False)
+async def calendar_feed(request, conn, user, data):
+    token = request.path_params["token"].removesuffix(".ics")
+    return Response(
+        exporting.calendar_feed(conn, token),
+        media_type="text/calendar; charset=utf-8",
+        headers={"Cache-Control": "private, max-age=300"},
+    )
+
+
+@endpoint(body=s.PasswordChange)
+async def change_password(request, conn, user, data):
+    return {"token": account.change_password(conn, user, data.current, data.new)}
+
+
+@endpoint
+async def sign_out_everywhere(request, conn, user, data):
+    return {"token": account.sign_out_everywhere(conn, user)}
+
+
+@endpoint(body=s.DeleteAccount)
+async def delete_account(request, conn, user, data):
+    account.delete_account(conn, user, data.password)
+    return None
 
 
 @endpoint(auth=False)
@@ -435,6 +597,18 @@ routes = [
     Route(f"{P}/notifications/read", read_notifications, methods=["POST"]),
     Route(f"{P}/templates", list_templates, methods=["GET"]),
     Route(f"{P}/templates/{{key}}/apply", apply_template, methods=["POST"]),
+    Route(f"{P}/templates/{{key}}", delete_my_template, methods=["DELETE"]),
+    Route(f"{P}/parse", parse_text, methods=["POST"]),
+    Route(f"{P}/analytics", get_analytics, methods=["GET"]),
+    Route(f"{P}/export.json", export_json, methods=["GET"]),
+    Route(f"{P}/export.csv", export_csv, methods=["GET"]),
+    Route(f"{P}/import", import_json, methods=["POST"]),
+    Route(f"{P}/me/calendar", calendar_link, methods=["GET", "POST"]),
+    Route(f"{P}/calendar/{{token}}", calendar_feed, methods=["GET"]),
+    Route(f"{P}/me/password", change_password, methods=["POST"]),
+    Route(f"{P}/me/logout-all", sign_out_everywhere, methods=["POST"]),
+    Route(f"{P}/me", delete_account, methods=["DELETE"]),
+    Route(f"{P}/plans/archive-finished", archive_finished, methods=["POST"]),
     Route(f"{P}/trash", trash, methods=["GET"]),
     Route(f"{P}/trash/{{plan_id}}", purge_plan, methods=["DELETE"]),
     Route(f"{P}/plans", list_plans, methods=["GET"]),
@@ -456,6 +630,18 @@ routes = [
     Route(f"{P}/plans/{{plan_id}}/attachments", upload, methods=["POST"]),
     Route(f"{P}/plans/{{plan_id}}/shares", create_share, methods=["POST"]),
     Route(f"{P}/plans/{{plan_id}}/shares", list_shares, methods=["GET"]),
+    Route(f"{P}/plans/{{plan_id}}/dependencies", add_dependency, methods=["POST"]),
+    Route(f"{P}/plans/{{plan_id}}/dependencies/{{blocker_id}}", remove_dependency, methods=["DELETE"]),
+    Route(f"{P}/plans/{{plan_id}}/comments", list_comments, methods=["GET"]),
+    Route(f"{P}/plans/{{plan_id}}/comments", add_comment, methods=["POST"]),
+    Route(f"{P}/plans/{{plan_id}}/timer/start", timer_start, methods=["POST"]),
+    Route(f"{P}/plans/{{plan_id}}/timer/stop", timer_stop, methods=["POST"]),
+    Route(f"{P}/plans/{{plan_id}}/duplicate", duplicate_plan, methods=["POST"]),
+    Route(f"{P}/plans/{{plan_id}}/save-template", save_as_template, methods=["POST"]),
+    Route(f"{P}/plans/{{plan_id}}/archive", archive_plan, methods=["POST"]),
+    Route(f"{P}/plans/{{plan_id}}/unarchive", unarchive_plan, methods=["POST"]),
+    Route(f"{P}/comments/{{comment_id}}", edit_comment, methods=["PATCH"]),
+    Route(f"{P}/comments/{{comment_id}}", delete_comment, methods=["DELETE"]),
     Route(f"{P}/steps/{{step_id}}", patch_step, methods=["PATCH"]),
     Route(f"{P}/steps/{{step_id}}", delete_step, methods=["DELETE"]),
     Route(f"{P}/attachments/{{att_id}}", download, methods=["GET"]),
