@@ -80,7 +80,7 @@ export function ShareDialog({ planId, open, onClose }: { planId: string; open: b
           const expired = new Date(l.expires_at) < new Date();
           const dead = !!l.revoked_at || expired;
           return (
-            <li key={l.token} className={`flex items-center gap-2 rounded-xl border border-line bg-white p-2.5 ${dead ? "opacity-60" : ""}`}>
+            <li key={l.token} className={`flex items-center gap-2 rounded-xl border border-line bg-surface p-2.5 ${dead ? "opacity-60" : ""}`}>
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-bold">{l.role === "edit" ? t("share.edit") : t("share.view")}</div>
                 <div className="text-xs text-ink-muted">

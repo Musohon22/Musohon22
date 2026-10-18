@@ -55,7 +55,7 @@ export default function InboxPage() {
         {approvals === null && <p className="text-ink-muted">{t("common.loading")}</p>}
         {approvals?.length === 0 && <p className="rounded-xl border border-dashed border-line-strong p-5 text-ink-muted">{t("inbox.noApprovals")}</p>}
         {approvals?.map((p) => (
-          <Link key={p.id} href={`/plan/${p.id}#confirm`} className="flex items-center gap-4 rounded-2xl border border-line bg-white p-4 hover:shadow-card">
+          <Link key={p.id} href={`/plan/${p.id}#confirm`} className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 hover:shadow-card">
             <span className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-[#9FC3FF] font-extrabold text-[#0E2A66]">
               {p.owner?.name.slice(0, 1).toUpperCase()}
             </span>
@@ -79,7 +79,7 @@ export default function InboxPage() {
             <li key={n.id}>
               <Link
                 href={n.plan_id ? `/plan/${n.plan_id}` : "/inbox"}
-                className={`flex gap-3 rounded-xl border p-3.5 ${n.read_at ? "border-line-soft bg-paper-2" : "border-line bg-white font-semibold"}`}
+                className={`flex gap-3 rounded-xl border p-3.5 ${n.read_at ? "border-line-soft bg-paper-2" : "border-line bg-surface font-semibold"}`}
               >
                 {!n.read_at && <span aria-hidden="true" className="mt-1.5 h-2.5 w-2.5 flex-none rounded-full bg-warn" />}
                 <span className="min-w-0 flex-1">

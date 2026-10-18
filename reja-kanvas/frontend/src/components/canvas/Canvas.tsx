@@ -7,7 +7,9 @@ import {
   type View,
 } from "@/lib/canvas";
 import { needsConfirmPanel, submitWithUndo } from "@/lib/actions";
-import { createPlan, deletePlan, movePlan, movePlans, toast, updatePlan, useStore, useT } from "@/lib/store";
+import { createPlan, deletePlan, deletePlans, movePlan, movePlans, toast, updatePlan, useStore, useT } from "@/lib/store";
+import { PRIORITIES } from "@/lib/recurrence";
+import { CARD_BG } from "./PlanCard";
 import { normalize } from "@/lib/search";
 import type { Plan } from "@/lib/types";
 import { Arrange, Card, Fit, Minus, Plus, Search, X } from "../Icons";
@@ -33,6 +35,8 @@ interface Drag {
   y: number;
   ox: number;
   oy: number;
+  /** Other selected cards moving along with this one (shift-click multi-select). */
+  group?: { id: string; ox: number; oy: number }[];
 }
 
 function loadView(): View {
@@ -75,6 +79,16 @@ export function Canvas({ plans }: { plans: Plan[] }) {
   plansRef.current = plans;
   // Pointer capture retargets click/dblclick to the canvas, so double-tap is detected here.
   const lastTap = useRef<{ id: string; at: number } | null>(null);
+  const [multi, setMultiState] = useState<string[]>([]);
+  const multiRef = useRef<string[]>([]);
+  const setMulti = (ids: string[]) => {
+    multiRef.current = ids;
+    setMultiState(ids);
+  };
+  const groupFor = (id: string) =>
+    multiRef.current.includes(id) && multiRef.current.length > 1
+      ? plansRef.current.filter((p) => multiRef.current.includes(p.id) && p.id !== id).map((p) => ({ id: p.id, ox: p.x, oy: p.y }))
+      : undefined;
 
   const setView = useCallback((v: View | ((v: View) => View)) => {
     setViewState((prev) => {
@@ -213,7 +227,7 @@ export function Canvas({ plans }: { plans: Plan[] }) {
         const cur = gesture.current;
         if (cur?.kind === "press" && cur.pointerId === g.pointerId) {
           gesture.current = { kind: "drag", pointerId: cur.pointerId, id: cur.id, ox: cur.ox, oy: cur.oy, offX: cur.offX, offY: cur.offY };
-          setDrag({ id: cur.id, x: cur.ox, y: cur.oy, ox: cur.ox, oy: cur.oy });
+          setDrag({ id: cur.id, x: cur.ox, y: cur.oy, ox: cur.ox, oy: cur.oy, group: groupFor(cur.id) });
           setSelected(cur.id);
           navigator.vibrate?.(12);
         }
@@ -271,7 +285,8 @@ export function Canvas({ plans }: { plans: Plan[] }) {
     const d = gesture.current;
     if (d?.kind === "drag") {
       const w = toWorld(e.clientX, e.clientY);
-      setDrag({ id: d.id, x: w.x - d.offX, y: w.y - d.offY, ox: d.ox, oy: d.oy });
+      const group = dragRef.current?.id === d.id ? dragRef.current.group : groupFor(d.id);
+      setDrag({ id: d.id, x: w.x - d.offX, y: w.y - d.offY, ox: d.ox, oy: d.oy, group });
     }
   }
 
@@ -287,6 +302,13 @@ export function Canvas({ plans }: { plans: Plan[] }) {
     gesture.current = null;
     if (g.kind === "press") {
       if (g.timer) clearTimeout(g.timer);
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+        const cur = multiRef.current;
+        const base = cur.length ? cur : selected && selected !== g.id ? [selected] : [];
+        setMulti(base.includes(g.id) ? base.filter((x) => x !== g.id) : [...base, g.id]);
+        return;
+      }
+      if (!multiRef.current.includes(g.id)) setMulti([]);
       setSelected(g.id);
       const now = performance.now();
       if (lastTap.current?.id === g.id && now - lastTap.current.at < 400) {
@@ -298,13 +320,18 @@ export function Canvas({ plans }: { plans: Plan[] }) {
       if (!g.moved && e.type === "pointerup") {
         setSelected(null);
         setEditing(null);
+        setMulti([]);
       }
     } else if (g.kind === "drag") {
       const cur = dragRef.current;
       if (cur && e.type === "pointerup") {
         const x = snap(cur.x);
         const y = snap(cur.y);
-        if (x !== cur.ox || y !== cur.oy) movePlan(cur.id, x, y);
+        if (x !== cur.ox || y !== cur.oy) {
+          const dx = x - cur.ox;
+          const dy = y - cur.oy;
+          movePlans([{ id: cur.id, x, y }, ...(cur.group ?? []).map((m) => ({ id: m.id, x: m.ox + dx, y: m.oy + dy }))]);
+        }
       }
       setDrag(null);
     }
@@ -440,6 +467,35 @@ export function Canvas({ plans }: { plans: Plan[] }) {
     );
   }, [plans, view, size, heights, selected, drag]);
 
+  // Plans not finished yet; a card is "blocked" while any of its blockers is in here.
+  const openIds = useMemo(() => new Set(plans.filter((p) => p.status !== "done" && p.status !== "cancelled").map((p) => p.id)), [plans]);
+  const byId = useMemo(() => new Map(plans.map((p) => [p.id, p])), [plans]);
+  const posOf = (p: Plan) => {
+    if (!drag) return p;
+    if (drag.id === p.id) return { x: drag.x, y: drag.y };
+    const m = drag.group?.find((g) => g.id === p.id);
+    return m ? { x: m.ox + drag.x - drag.ox, y: m.oy + drag.y - drag.oy } : p;
+  };
+  const links = plans.flatMap((p) =>
+    p.blocked_by
+      .map((b) => byId.get(b))
+      .filter((b): b is Plan => !!b)
+      .map((b) => {
+        const from = posOf(b);
+        const to = posOf(p);
+        const x1 = from.x + CARD_W;
+        const y1 = from.y + (heights[b.id] ?? 160) / 2;
+        const x2 = to.x;
+        const y2 = to.y + (heights[p.id] ?? 160) / 2;
+        // leave from whichever side faces the target
+        const forward = x2 >= x1 - 40;
+        const sx = forward ? x1 : from.x;
+        const ex = forward ? x2 : to.x + CARD_W;
+        const bend = Math.max(60, Math.abs(ex - sx) / 2) * (forward ? 1 : -1);
+        return { id: `${b.id}-${p.id}`, d: `M${sx},${y1} C${sx + bend},${y1} ${ex - bend},${y2} ${ex},${y2}`, open: openIds.has(b.id) };
+      }),
+  );
+
   const zoneHeight = Math.max(900, ...plans.map((p) => p.y + (heights[p.id] ?? 160) + 200));
   const lowDetail = view.zoom < 0.45;
 
@@ -462,7 +518,7 @@ export function Canvas({ plans }: { plans: Plan[] }) {
             <div
               key={z.key}
               aria-hidden="true"
-              className={`absolute rounded-[22px] ${i === 0 ? "border-[1.5px] border-[#E6E0D3] bg-white/45" : "border-[1.5px] border-dashed border-[#DCD5C6] bg-white/30"}`}
+              className={`absolute rounded-[22px] ${i === 0 ? "border-[1.5px] border-line bg-surface/45" : "border-[1.5px] border-dashed border-line-strong bg-surface/30"}`}
               style={{ left: z.x, top: ZONE_TOP - 20, width: ZONE_W, height: zoneHeight }}
             >
               <div className="absolute left-5 top-3.5 flex items-center gap-2 font-display text-[15px] font-bold text-ink-2">
@@ -472,24 +528,51 @@ export function Canvas({ plans }: { plans: Plan[] }) {
             </div>
           ))}
 
+          {links.length > 0 && (
+            <svg aria-hidden="true" className="pointer-events-none absolute left-0 top-0 overflow-visible" width={1} height={1}>
+              <defs>
+                <marker id="dep-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M0,0 L10,5 L0,10 z" className="fill-ink-muted" />
+                </marker>
+              </defs>
+              {links.map((l) => (
+                <path
+                  key={l.id}
+                  d={l.d}
+                  fill="none"
+                  strokeWidth={2}
+                  strokeDasharray={l.open ? "6 6" : undefined}
+                  className={l.open ? "stroke-ink-muted" : "stroke-ok/60"}
+                  markerEnd="url(#dep-arrow)"
+                />
+              ))}
+            </svg>
+          )}
+
           {drag && (
             <div
               aria-hidden="true"
-              className="absolute rounded-2xl border-2 border-dashed border-[#A9A190]"
+              className="absolute rounded-2xl border-2 border-dashed border-ink-muted/50"
               style={{ left: drag.ox, top: drag.oy, width: CARD_W, height: heights[drag.id] ?? 140 }}
             />
           )}
 
           {visible.map((p) => {
-            const shown = drag?.id === p.id ? { ...p, x: drag.x, y: drag.y } : p;
+            const member = drag?.group?.find((m) => m.id === p.id);
+            const shown =
+              drag?.id === p.id ? { ...p, x: drag.x, y: drag.y }
+              : member && drag ? { ...p, x: member.ox + drag.x - drag.ox, y: member.oy + drag.y - drag.oy }
+              : p;
             return (
               <PlanCard
                 key={p.id}
                 plan={shown}
                 tz={user.tz}
                 lang={lang}
-                selected={selected === p.id}
-                dragging={drag?.id === p.id}
+                selected={selected === p.id || multi.includes(p.id)}
+                actions={selected === p.id && multi.length === 0}
+                blocked={p.blocked_by.some((b) => openIds.has(b))}
+                dragging={drag?.id === p.id || !!member}
                 pulse={pulse === p.id}
                 lowDetail={lowDetail}
                 editing={editing === p.id}
@@ -519,7 +602,7 @@ export function Canvas({ plans }: { plans: Plan[] }) {
 
       {/* search */}
       <div className="absolute left-[76px] right-3 top-3 sm:right-auto sm:w-80">
-        <label className="flex h-11 items-center gap-2 rounded-xl border border-line bg-white px-3 shadow-card">
+        <label className="flex h-11 items-center gap-2 rounded-xl border border-line bg-surface px-3 shadow-card">
           <Search size={16} className="text-ink-muted" />
           <span className="sr-only">{t("canvas.search")}</span>
           <input
@@ -545,7 +628,7 @@ export function Canvas({ plans }: { plans: Plan[] }) {
           {query && <button type="button" aria-label={t("common.close")} onClick={() => setQuery("")} className="text-ink-muted"><X size={16} /></button>}
         </label>
         {query && (
-          <ul id="search-results" role="listbox" className="mt-1 overflow-hidden rounded-xl border border-line bg-white shadow-lift">
+          <ul id="search-results" role="listbox" className="mt-1 overflow-hidden rounded-xl border border-line bg-surface shadow-lift">
             {results.length === 0 && <li className="px-3 py-2.5 text-sm text-ink-muted">{t("canvas.noResults")}</li>}
             {results.map((p, i) => (
               <li
@@ -578,10 +661,12 @@ export function Canvas({ plans }: { plans: Plan[] }) {
           <span>{t("canvas.hintDone")}</span>
           <span className="opacity-40">|</span>
           <span>{t("canvas.hintKeys")}</span>
+          <span className="opacity-40">|</span>
+          <span>{t("canvas.hintMulti")}</span>
           <button
             type="button"
             aria-label={t("canvas.hideHints")}
-            className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-white/10"
+            className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface/10"
             onClick={() => {
               setHintsHidden(true);
               try {
@@ -597,6 +682,49 @@ export function Canvas({ plans }: { plans: Plan[] }) {
       )}
       {!hintsHidden && plans.length > 0 && (
         <div className="absolute bottom-4 left-3 rounded-full bg-ink px-3 py-1.5 text-xs text-paper md:hidden">{t("canvas.hintTouch")}</div>
+      )}
+
+      {multi.length > 0 && (
+        <div role="toolbar" aria-label={t("canvas.bulk", { n: multi.length })} className="absolute bottom-4 left-1/2 z-20 flex max-w-[calc(100%-24px)] -translate-x-1/2 flex-wrap items-center gap-2 rounded-2xl border border-line bg-paper-2 p-2 shadow-lift">
+          <span className="px-2 text-sm font-bold">{t("canvas.bulk", { n: multi.length })}</span>
+          <span className="flex gap-1" role="group" aria-label={t("plan.color")}>
+            {(["yellow", "mint", "lilac", "peach", "sky", "white"] as const).map((c) => (
+              <button
+                key={c}
+                type="button"
+                aria-label={`${t("plan.color")}: ${c}`}
+                onClick={() => multi.forEach((id) => updatePlan(id, { color: c }))}
+                className={`h-8 w-8 rounded-full ring-1 ring-black/10 ${CARD_BG[c]}`}
+              />
+            ))}
+          </span>
+          <label>
+            <span className="sr-only">{t("plan.priority")}</span>
+            <select
+              className="field h-9 w-auto py-0 text-sm"
+              defaultValue=""
+              onChange={(e) => {
+                const v = e.target.value as Plan["priority"];
+                if (v) multi.forEach((id) => updatePlan(id, { priority: v }));
+                e.target.value = "";
+              }}
+            >
+              <option value="">{t("plan.priority")}…</option>
+              {PRIORITIES.map((p) => <option key={p} value={p}>{t(`priority.${p}`)}</option>)}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="btn-danger h-9 px-3"
+            onClick={() => {
+              deletePlans(multi);
+              setMulti([]);
+            }}
+          >
+            {t("card.delete")}
+          </button>
+          <button type="button" className="btn-icon h-9 w-9" aria-label={t("common.close")} onClick={() => setMulti([])}><X size={16} /></button>
+        </div>
       )}
 
       {loaded && plans.length === 0 && <EmptyState onBlank={newCard} />}

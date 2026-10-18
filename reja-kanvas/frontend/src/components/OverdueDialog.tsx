@@ -67,7 +67,7 @@ export function OverdueDialog() {
       <p className="-mt-2 text-ink-3">{t("overdue.lead")}</p>
       <ul className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto">
         {plans.map((p) => (
-          <li key={p.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-white p-3">
+          <li key={p.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface p-3">
             <div className="min-w-0 flex-1 basis-48">
               <div className="truncate font-bold">{p.title}</div>
               <div className="text-xs text-ink-muted">{t("overdue.was", { date: fmtDateTime(p.due_at!, user.tz, lang) })}</div>

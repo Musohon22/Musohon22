@@ -5,7 +5,8 @@ import { CARD_W } from "@/lib/canvas";
 import { fmtDate, fmtTime, isOverdue, zoneOf } from "@/lib/time";
 import type { Lang, Plan } from "@/lib/types";
 import { useT } from "@/lib/store";
-import { Alert, Check, Clock, Lock, Open, Trash } from "../Icons";
+import { PRIORITY_STYLE } from "@/lib/recurrence";
+import { Alert, Check, Clock, Lock, Open, Restore, Trash } from "../Icons";
 
 export const CARD_BG: Record<Plan["color"], string> = {
   yellow: "bg-card-yellow",
@@ -30,6 +31,10 @@ interface Props {
   tz: string;
   lang: Lang;
   selected: boolean;
+  /** Show the Open / Done / Delete bar (single selection only). */
+  actions: boolean;
+  /** Waits on another plan that is not finished yet. */
+  blocked: boolean;
   dragging: boolean;
   pulse: boolean;
   lowDetail: boolean;
@@ -44,7 +49,7 @@ interface Props {
 }
 
 function PlanCardInner(props: Props) {
-  const { plan, tz, lang, selected, dragging, pulse, lowDetail, editing } = props;
+  const { plan, tz, lang, selected, actions, blocked, dragging, pulse, lowDetail, editing } = props;
   const t = useT();
   const overdue = isOverdue(plan);
   const finished = plan.status === "done";
@@ -71,7 +76,7 @@ function PlanCardInner(props: Props) {
         zIndex: dragging ? 30 : selected ? 20 : undefined,
         touchAction: "none",
       }}
-      className={`group select-none rounded-2xl p-4 outline-none transition-shadow ${CARD_BG[plan.color]} ${
+      className={`card-scope group select-none rounded-2xl p-4 text-ink outline-none transition-shadow ${CARD_BG[plan.color]} ${
         dragging ? "cursor-grabbing shadow-lift" : "cursor-grab shadow-card"
       } ${selected ? "ring-2 ring-accent ring-offset-2 ring-offset-paper" : "focus-visible:ring-2 focus-visible:ring-accent"} ${
         pulse ? "animate-pulsering" : ""
@@ -82,7 +87,21 @@ function PlanCardInner(props: Props) {
       ) : (
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center justify-between gap-2">
-            {plan.tag ? <span className={`chip bg-white/60 ${ink}`}>{plan.tag}</span> : <span />}
+            <span className="flex min-w-0 items-center gap-1.5">
+              {plan.tag && <span className={`chip truncate bg-surface/60 ${ink}`}>{plan.tag}</span>}
+              {plan.priority !== "normal" && (
+                <span className={`chip ${PRIORITY_STYLE[plan.priority]}`}>{t(`priority.${plan.priority}`)}</span>
+              )}
+              {plan.recurrence && (
+                <span className={ink} title={t("card.recurring")} aria-label={t("card.recurring")}><Restore size={14} /></span>
+              )}
+              {plan.timer_started_at && (
+                <span className="relative flex h-2.5 w-2.5" title={t("card.timer")} aria-label={t("card.timer")}>
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" />
+                </span>
+              )}
+            </span>
             {plan.due_at && (
               <span className={`flex items-center gap-1 font-mono text-xs ${overdue ? "font-bold text-warn-strong" : ink}`}>
                 {overdue ? <Alert size={13} /> : <Clock size={13} />}
@@ -114,6 +133,9 @@ function PlanCardInner(props: Props) {
           )}
 
           {overdue && <div className="text-xs font-bold text-warn-strong">{t("card.overdue")}</div>}
+          {blocked && !finished && !cancelled && (
+            <div className="flex items-center gap-1.5 text-xs font-bold text-ink-3"><Lock size={13} />{t("card.blocked")}</div>
+          )}
           {plan.status === "pending_approval" && (
             <div className="flex items-center gap-1.5 text-xs font-bold text-accent-ink"><Lock size={13} />{t("card.pending")}</div>
           )}
@@ -125,17 +147,17 @@ function PlanCardInner(props: Props) {
           )}
           {cancelled && <div className="text-xs font-bold text-ink-3">{t("card.cancelled")}</div>}
 
-          {selected && !editing && (
+          {actions && !editing && (
             <div className="flex gap-1.5 pt-1" onPointerDown={(e) => e.stopPropagation()}>
-              <button type="button" className="btn h-9 flex-1 bg-white/80 px-2" onClick={() => props.onOpen(plan)}>
+              <button type="button" className="btn h-9 flex-1 bg-surface/80 px-2" onClick={() => props.onOpen(plan)}>
                 <Open size={15} />{t("card.open")}
               </button>
               {(plan.status === "active" || plan.status === "returned") && (
-                <button type="button" className="btn h-9 flex-1 bg-white/80 px-2" onClick={() => props.onQuickDone(plan)}>
+                <button type="button" className="btn h-9 flex-1 bg-surface/80 px-2" onClick={() => props.onQuickDone(plan)}>
                   <Check size={15} />{t("card.done")}
                 </button>
               )}
-              <button type="button" aria-label={t("card.delete")} className="btn h-9 w-9 bg-white/80 px-0" onClick={() => props.onDelete(plan)}>
+              <button type="button" aria-label={t("card.delete")} className="btn h-9 w-9 bg-surface/80 px-0" onClick={() => props.onDelete(plan)}>
                 <Trash size={15} />
               </button>
             </div>
@@ -184,7 +206,7 @@ function TitleInput({ plan, onDone, label }: { plan: Plan; onDone: (v: string | 
         if (e.key === "Escape") onDone(null);
       }}
       onBlur={() => onDone(value.trim() || null)}
-      className="w-full resize-none rounded-lg border-0 bg-white/70 p-1.5 font-display text-xl font-bold leading-tight outline-none ring-2 ring-accent"
+      className="w-full resize-none rounded-lg border-0 bg-surface/70 p-1.5 font-display text-xl font-bold leading-tight outline-none ring-2 ring-accent"
     />
   );
 }

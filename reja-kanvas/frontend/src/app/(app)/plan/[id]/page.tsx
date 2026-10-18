@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import {
-  deletePlan, loadDetail, patchDetail, planAction, updatePlan, useStore, useT,
+  deletePlan, loadDetail, loadPlans, online, patchDetail, planAction, storeDetail, toast, updatePlan, useStore, useT,
 } from "@/lib/store";
 import { fromLocalInput, toLocalInput } from "@/lib/time";
-import type { Color, PlanEvent } from "@/lib/types";
+import type { Color, PlanDetail, PlanEvent, Priority } from "@/lib/types";
 import { SaveState } from "@/components/SyncBanner";
 import { Editor } from "@/components/plan/Editor";
 import { StepsList } from "@/components/plan/StepsList";
@@ -18,6 +18,11 @@ import { ShareDialog } from "@/components/plan/ShareDialog";
 import { HistoryList } from "@/components/plan/HistoryList";
 import { AutoArea, AutoText } from "@/components/plan/AutoSave";
 import { ChevronLeft, History, Lock, More, Share, Target } from "@/components/Icons";
+import { RecurrencePicker } from "@/components/plan/RecurrencePicker";
+import { Dependencies } from "@/components/plan/Dependencies";
+import { Comments } from "@/components/plan/Comments";
+import { FocusTimer } from "@/components/plan/FocusTimer";
+import { PRIORITIES } from "@/lib/recurrence";
 import { CARD_BG } from "@/components/canvas/PlanCard";
 
 const COLORS: Color[] = ["yellow", "mint", "lilac", "peach", "sky", "white"];
@@ -91,7 +96,7 @@ export default function PlanPage({ params }: { params: { id: string } }) {
           {isOwner && (
             <details className="relative">
               <summary aria-label={t("plan.more")} className="btn h-10 w-10 cursor-pointer list-none px-0 [&::-webkit-details-marker]:hidden"><More /></summary>
-              <div className="absolute right-0 z-30 mt-1 w-60 rounded-xl border border-line bg-white p-1 shadow-lift">
+              <div className="absolute right-0 z-30 mt-1 w-60 rounded-xl border border-line bg-surface p-1 shadow-lift">
                 {(plan.status === "active" || plan.status === "returned") && (
                   <button
                     type="button"
@@ -101,6 +106,51 @@ export default function PlanPage({ params }: { params: { id: string } }) {
                     }}
                   >
                     {t("plan.cancelPlan")}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="h-10 w-full rounded-lg px-3 text-left text-sm font-semibold hover:bg-paper-2"
+                  onClick={async () => {
+                    const copy = await online(() => api.post<PlanDetail>(`/api/plans/${plan.id}/duplicate`));
+                    if (copy) {
+                      storeDetail(copy);
+                      toast(t("plan.duplicated"), { tone: "success" });
+                      router.push(`/plan/${copy.id}`);
+                    }
+                  }}
+                >
+                  {t("plan.duplicate")}
+                </button>
+                <button
+                  type="button"
+                  className="h-10 w-full rounded-lg px-3 text-left text-sm font-semibold hover:bg-paper-2"
+                  onClick={async () => {
+                    const name = window.prompt(t("plan.templateName"), plan.title.slice(0, 60));
+                    if (!name?.trim()) return;
+                    const ok = await online(() => api.post(`/api/plans/${plan.id}/save-template`, { name: name.trim().slice(0, 60) }));
+                    if (ok) toast(t("plan.templateSaved"), { tone: "success" });
+                  }}
+                >
+                  {t("plan.saveTemplate")}
+                </button>
+                {(plan.status === "done" || plan.status === "cancelled") && (
+                  <button
+                    type="button"
+                    className="h-10 w-full rounded-lg px-3 text-left text-sm font-semibold hover:bg-paper-2"
+                    onClick={async () => {
+                      const d = await online(() => api.post<PlanDetail>(`/api/plans/${plan.id}/${plan.archived_at ? "unarchive" : "archive"}`));
+                      if (d) {
+                        storeDetail(d);
+                        void loadPlans();
+                        if (!plan.archived_at) {
+                          toast(t("plan.archived"), { tone: "success" });
+                          router.push("/canvas");
+                        }
+                      }
+                    }}
+                  >
+                    {plan.archived_at ? t("plan.unarchive") : t("plan.archive")}
                   </button>
                 )}
                 <button
@@ -121,7 +171,7 @@ export default function PlanPage({ params }: { params: { id: string } }) {
 
       <div className="flex flex-1 flex-wrap">
         <main className="flex min-w-0 flex-[999_1_560px] justify-center px-3 py-6 sm:px-6 sm:py-9">
-          <article className="flex w-full max-w-[780px] flex-col gap-5 rounded-md bg-white px-5 py-8 shadow-paper sm:px-14 sm:py-12">
+          <article className="flex w-full max-w-[780px] flex-col gap-5 rounded-md bg-surface px-5 py-8 shadow-paper sm:px-14 sm:py-12">
             {!isOwner && <p className="rounded-lg bg-accent-soft px-3 py-2 text-sm font-semibold text-accent-ink">{t("plan.approverView")}</p>}
             {lockNote && isOwner && (
               <p className="flex items-center gap-2 rounded-lg bg-paper-2 px-3 py-2 text-sm font-semibold text-ink-3">
@@ -224,6 +274,23 @@ export default function PlanPage({ params }: { params: { id: string } }) {
                   }}
                 />
               )}
+              <label className="flex flex-col gap-1.5">
+                <span className="label">{t("plan.priority")}</span>
+                <select
+                  className="field"
+                  disabled={!isOwner}
+                  value={plan.priority}
+                  onChange={(e) => updatePlan(plan.id, { priority: e.target.value as Priority })}
+                >
+                  {PRIORITIES.map((p) => <option key={p} value={p}>{t(`priority.${p}`)}</option>)}
+                </select>
+              </label>
+              <RecurrencePicker
+                value={plan.recurrence}
+                disabled={contentLocked}
+                hasDue={!!plan.due_at}
+                onChange={(r) => updatePlan(plan.id, { recurrence: r })}
+              />
               <label className="flex items-center gap-2.5 text-sm font-semibold sm:col-span-2">
                 <input
                   type="checkbox"
@@ -236,7 +303,7 @@ export default function PlanPage({ params }: { params: { id: string } }) {
               </label>
             </div>
 
-            <section className="flex gap-3.5 rounded-xl bg-[#F6F8FF] p-4">
+            <section className="flex gap-3.5 rounded-xl bg-accent-soft/60 p-4">
               <Target size={22} className="mt-1 flex-none text-accent-ink" />
               <div className="flex flex-1 flex-col gap-3">
                 <label className="flex flex-col gap-1">
@@ -269,6 +336,8 @@ export default function PlanPage({ params }: { params: { id: string } }) {
               <StepsList planId={plan.id} steps={plan.steps} editable={!contentLocked} />
             </section>
 
+            <Dependencies plan={plan} editable={!contentLocked} />
+
             <section className="flex flex-col gap-2">
               <h2 className="font-display text-2xl font-bold tracking-tight">{t("plan.notes")}</h2>
               <Editor
@@ -283,6 +352,8 @@ export default function PlanPage({ params }: { params: { id: string } }) {
 
         <aside className="flex w-full flex-col gap-6 border-t border-line bg-paper-2 p-5 sm:p-6 lg:w-[400px] lg:flex-none lg:border-l lg:border-t-0">
           <ConfirmPanel plan={plan} onChanged={refresh} />
+          <FocusTimer plan={plan} />
+          <Comments planId={plan.id} />
           {events.length > 0 && (
             <section className="flex flex-col gap-3 border-t border-dashed border-line-strong pt-5">
               <h2 className="eyebrow flex items-center gap-2"><History size={14} />{t("plan.history")}</h2>

@@ -36,7 +36,13 @@ export function ConfirmPanel({ plan, onChanged }: { plan: PlanDetail; onChanged:
   const { done, total } = plan.progress;
   const stepsOk = done >= total;
   const proofOk = !plan.require_proof || plan.attachments.length > 0;
-  const ready = stepsOk && proofOk;
+  const planMap = useStore((s) => s.plans);
+  // Blockers still open, using fresh local status where we have it.
+  const waiting = (plan.open_blockers ?? []).filter((b) => {
+    const local = planMap[b.id];
+    return !local || (local.status !== "done" && local.status !== "cancelled");
+  });
+  const ready = stepsOk && proofOk && waiting.length === 0;
 
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -112,7 +118,7 @@ export function ConfirmPanel({ plan, onChanged }: { plan: PlanDetail; onChanged:
 
       {/* ---- done ---- */}
       {plan.status === "done" && (
-        <div className={`flex flex-col gap-3 rounded-2xl p-4 ${plan.late_minutes ? "bg-card-peach" : "bg-card-mint"}`}>
+        <div className={`card-scope flex flex-col gap-3 rounded-2xl p-4 text-ink ${plan.late_minutes ? "bg-card-peach" : "bg-card-mint"}`}>
           <div className="flex items-center gap-4">
             <div
               aria-hidden="true"
@@ -129,7 +135,7 @@ export function ConfirmPanel({ plan, onChanged }: { plan: PlanDetail; onChanged:
               </div>
             </div>
           </div>
-          {plan.rating && <div className="chip self-start bg-white/70 text-ink">{t(`rating.${plan.rating}`)}</div>}
+          {plan.rating && <div className="chip self-start bg-surface/70 text-ink">{t(`rating.${plan.rating}`)}</div>}
           {plan.final_note && <p className="text-sm text-ink-2">{plan.final_note}</p>}
           {fileList(false)}
           {(isOwner || plan.my_role === "approver" || plan.my_role === "backup") &&
@@ -152,14 +158,14 @@ export function ConfirmPanel({ plan, onChanged }: { plan: PlanDetail; onChanged:
                 </div>
               </form>
             ) : (
-              <button type="button" className="btn self-start bg-white/70" onClick={() => setReopening(true)}>{t("confirm.reopen")}</button>
+              <button type="button" className="btn self-start bg-surface/70" onClick={() => setReopening(true)}>{t("confirm.reopen")}</button>
             ))}
         </div>
       )}
 
       {/* ---- cancelled ---- */}
       {plan.status === "cancelled" && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-line bg-white p-4">
+        <div className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4">
           <div className="font-bold">{t("confirm.cancelledTitle")}</div>
           {isOwner && (
             <button type="button" className="btn self-start" disabled={busy} onClick={() => void run(() => planAction(plan.id, "reopen", { reason: "reopen" }))}>
@@ -178,7 +184,7 @@ export function ConfirmPanel({ plan, onChanged }: { plan: PlanDetail; onChanged:
           </div>
           <div className="font-bold">{t("confirm.waiting", { name: (plan.escalated_at && plan.backup_approver ? plan.backup_approver.name : plan.approver?.name) ?? "—" })}</div>
           {plan.submitted_at && <div className="text-sm text-ink-3">{t("confirm.sentAt", { time: fmtDateTime(plan.submitted_at, user.tz, lang) })}</div>}
-          {plan.escalated_at && <div className="rounded-lg bg-white/70 px-3 py-2 text-sm text-warn-ink">{t("confirm.escalated")}</div>}
+          {plan.escalated_at && <div className="rounded-lg bg-surface/70 px-3 py-2 text-sm text-warn-ink">{t("confirm.escalated")}</div>}
           {fileList(false)}
           {isOwner && (
             <button type="button" className="btn self-start" disabled={busy} onClick={() => void run(() => planAction(plan.id, "reopen", { reason: "withdraw" }))}>
@@ -191,11 +197,11 @@ export function ConfirmPanel({ plan, onChanged }: { plan: PlanDetail; onChanged:
       {/* ---- approver decides ---- */}
       {plan.status === "pending_approval" && plan.can_decide && (
         <div className="flex flex-col gap-3 rounded-2xl bg-ink p-5 text-paper">
-          <div className="text-xs font-bold uppercase tracking-[0.08em] text-[#CFC9BC]">{t("confirm.decideTitle")}</div>
+          <div className="text-xs font-bold uppercase tracking-[0.08em] text-paper/75">{t("confirm.decideTitle")}</div>
           <div className="font-display text-lg font-bold">{t("confirm.decideLead", { name: plan.owner?.name ?? "—" })}</div>
-          {plan.submitted_at && <div className="text-sm text-[#CFC9BC]">{t("confirm.sentAt", { time: fmtDateTime(plan.submitted_at, user.tz, lang) })}</div>}
-          <div className="text-sm text-[#CFC9BC]">{t("confirm.step1")}: {done}/{total}</div>
-          {plan.final_note && <p className="rounded-lg bg-white/10 p-3 text-sm">{plan.final_note}</p>}
+          {plan.submitted_at && <div className="text-sm text-paper/75">{t("confirm.sentAt", { time: fmtDateTime(plan.submitted_at, user.tz, lang) })}</div>}
+          <div className="text-sm text-paper/75">{t("confirm.step1")}: {done}/{total}</div>
+          {plan.final_note && <p className="rounded-lg bg-surface/10 p-3 text-sm">{plan.final_note}</p>}
           {plan.attachments.length > 0 && <div className="rounded-xl bg-paper p-1 text-ink">{fileList(false)}</div>}
           {rejecting ? (
             <form
@@ -328,7 +334,9 @@ export function ConfirmPanel({ plan, onChanged }: { plan: PlanDetail; onChanged:
               {!reachable
                 ? t("err.offline_action")
                 : !ready
-                  ? !stepsOk
+                  ? waiting.length
+                    ? t("deps.waiting", { titles: waiting.map((w) => `«${w.title}»`).join(", ") })
+                    : !stepsOk
                     ? t("err.steps_incomplete")
                     : t("err.proof_required")
                   : plan.approver
@@ -344,7 +352,7 @@ export function ConfirmPanel({ plan, onChanged }: { plan: PlanDetail; onChanged:
 
 function Step({ n, ok, title, badge, children }: { n: number; ok: boolean; title: string; badge?: string; children: React.ReactNode }) {
   return (
-    <li className="flex gap-3 rounded-2xl border border-line bg-white p-3.5">
+    <li className="flex gap-3 rounded-2xl border border-line bg-surface p-3.5">
       <span
         aria-hidden="true"
         className={`flex h-7 w-7 flex-none items-center justify-center rounded-full text-[13px] font-extrabold ${ok ? "bg-ok-soft text-ok" : "bg-warn-soft text-warn-ink"}`}

@@ -64,11 +64,11 @@ export default function SharedPage({ params }: { params: { token: string } }) {
       <div className="mx-auto mb-4 flex max-w-[780px] flex-wrap items-center gap-3">
         <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-ink text-paper"><Logo size={20} /></span>
         <span className="text-sm text-ink-3">{t("shared.from", { name: plan.owner?.name ?? "—" })}</span>
-        <span className={`chip ml-auto ${editable ? "bg-accent-soft text-accent-ink" : "bg-white text-ink-3"}`}>
+        <span className={`chip ml-auto ${editable ? "bg-accent-soft text-accent-ink" : "bg-surface text-ink-3"}`}>
           {editable ? t("shared.canEdit") : t("shared.viewOnly")}
         </span>
       </div>
-      <article className="mx-auto flex max-w-[780px] flex-col gap-5 rounded-md bg-white px-5 py-8 shadow-paper sm:px-14 sm:py-12">
+      <article className="mx-auto flex max-w-[780px] flex-col gap-5 rounded-md bg-surface px-5 py-8 shadow-paper sm:px-14 sm:py-12">
         {plan.status === "done" && (
           <div className="flex -rotate-3 items-center gap-1.5 self-start rounded-lg border-[2.5px] border-ok px-2.5 py-1 font-display text-sm font-extrabold tracking-[0.08em] text-ok">
             <Check size={15} />{t("card.stampDone")}
@@ -90,7 +90,7 @@ export default function SharedPage({ params }: { params: { token: string } }) {
         )}
         {plan.due_at && <p className="text-sm text-ink-3"><b>{t("plan.due")}:</b> {fmtDateTime(plan.due_at, tz, lang)}</p>}
         {(plan.goal || plan.done_criteria) && (
-          <div className="flex flex-col gap-2 rounded-xl bg-[#F6F8FF] p-4 text-[15px]">
+          <div className="flex flex-col gap-2 rounded-xl bg-accent-soft/60 p-4 text-[15px]">
             {plan.goal && <p><b>{t("plan.goal")}:</b> {plan.goal}</p>}
             {plan.done_criteria && <p><b>{t("plan.criteria")}:</b> {plan.done_criteria}</p>}
           </div>

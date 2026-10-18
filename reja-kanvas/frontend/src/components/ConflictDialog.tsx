@@ -37,7 +37,7 @@ export function ConflictDialog() {
       <p className="text-ink-3">{t("conflict.lead")}</p>
       <div className="flex flex-col gap-4">
         {conflict.fields.map((field) => (
-          <fieldset key={field} className="rounded-xl border border-line bg-white p-4">
+          <fieldset key={field} className="rounded-xl border border-line bg-surface p-4">
             <legend className="px-1 text-sm font-bold">{t(`field.${field}` as MessageKey)}</legend>
             <div className="grid gap-2 sm:grid-cols-2">
               {[true, false].map((mine) => (

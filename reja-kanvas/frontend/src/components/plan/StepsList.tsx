@@ -50,7 +50,7 @@ function StepRow({ planId, step, editable }: { planId: string; step: Step; edita
   const done = step.status === "done";
 
   return (
-    <div className={`group flex items-center gap-3 rounded-lg px-2.5 py-1.5 ${!done && !cancelled ? "hover:bg-[#FFFBEA]" : ""}`}>
+    <div className={`group flex items-center gap-3 rounded-lg px-2.5 py-1.5 ${!done && !cancelled ? "hover:bg-paper-2" : ""}`}>
       <input
         type="checkbox"
         aria-label={step.text}
@@ -82,7 +82,7 @@ function StepRow({ planId, step, editable }: { planId: string; step: Step; edita
           <summary aria-label={t("plan.stepActions")} className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-lg text-ink-muted hover:bg-paper-3 [&::-webkit-details-marker]:hidden">
             <More size={16} />
           </summary>
-          <div className="absolute right-0 z-20 mt-1 w-56 rounded-xl border border-line bg-white p-1 shadow-lift">
+          <div className="absolute right-0 z-20 mt-1 w-56 rounded-xl border border-line bg-surface p-1 shadow-lift">
             <button
               type="button"
               className="h-10 w-full rounded-lg px-3 text-left text-sm font-semibold hover:bg-paper-2"

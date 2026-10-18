@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { loadPlans, loadStats, signOut, useStore, useT } from "@/lib/store";
-import { Bell, Grid, Inbox, ListIcon, Logo, Settings, Trash } from "@/components/Icons";
+import { api } from "@/lib/api";
+import { hasKey } from "@/lib/i18n";
+import { loadPlans, loadStats, signOut, t as translate, useStore, useT } from "@/lib/store";
+import type { Notification as Note } from "@/lib/types";
+import { Bell, Calendar, Grid, Inbox, ListIcon, Logo, Search, Settings, Target, Trash } from "@/components/Icons";
+import { CommandPalette } from "@/components/CommandPalette";
 import { SyncBanner } from "@/components/SyncBanner";
 import { ConflictDialog } from "@/components/ConflictDialog";
 import { OverdueDialog } from "@/components/OverdueDialog";
@@ -13,9 +17,51 @@ import type { MessageKey } from "@/lib/i18n";
 const NAV: { href: string; key: MessageKey; icon: typeof Grid }[] = [
   { href: "/canvas", key: "nav.canvas", icon: Grid },
   { href: "/list", key: "nav.list", icon: ListIcon },
+  { href: "/calendar", key: "nav.calendar", icon: Calendar },
+  { href: "/analytics", key: "nav.analytics", icon: Target },
   { href: "/inbox", key: "nav.inbox", icon: Inbox },
   { href: "/trash", key: "nav.trash", icon: Trash },
 ];
+
+const NOTIFY_KEY = "reja.notify";
+
+/** Shows new in-app notifications as system notifications while the tab is in the background. */
+function useBrowserNotifications(enabled: boolean) {
+  const seen = useRef<number>(0);
+  useEffect(() => {
+    if (!enabled || typeof Notification === "undefined") return;
+    const tick = async () => {
+      let on = false;
+      try {
+        on = localStorage.getItem(NOTIFY_KEY) === "1";
+      } catch {
+        /* ignore */
+      }
+      if (!on || Notification.permission !== "granted") return;
+      try {
+        const { notifications } = await api.get<{ notifications: Note[] }>("/api/notifications");
+        const fresh = notifications.filter((n) => !n.read_at && n.id > seen.current);
+        if (seen.current && document.hidden) {
+          for (const n of fresh.slice(0, 3)) {
+            const key = `notif.${n.kind === "approver_silent" && n.data.has_backup ? "approver_silent_backup" : n.kind}`;
+            const body = hasKey(key) ? translate(key, { title: n.data.title ?? "", reason: n.data.reason ?? "", time: "" }) : n.kind;
+            const note = new Notification("Reja", { body, icon: "/icon.svg", tag: String(n.id) });
+            note.onclick = () => {
+              window.focus();
+              if (n.plan_id) location.assign(`/plan/${n.plan_id}`);
+            };
+          }
+        }
+        seen.current = Math.max(seen.current, ...notifications.map((n) => n.id), 1);
+      } catch {
+        /* offline: try next time */
+      }
+    };
+    void tick();
+    const id = setInterval(tick, 60000);
+    return () => clearInterval(id);
+  }, [enabled]);
+}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const t = useT();
@@ -24,6 +70,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const ready = useStore((s) => s.ready);
   const user = useStore((s) => s.user);
   const stats = useStore((s) => s.stats);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  useBrowserNotifications(!!user);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     if (ready && !user) router.replace("/login");
@@ -56,7 +115,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 key={href}
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`flex h-9 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3 text-sm font-bold sm:flex-none ${active ? "bg-white text-ink shadow-sm" : "text-ink-3 hover:text-ink"}`}
+                className={`flex h-9 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3 text-sm font-bold sm:flex-none ${active ? "bg-surface text-ink shadow-sm" : "text-ink-3 hover:text-ink"}`}
               >
                 <Icon size={16} />
                 <span>{t(key)}</span>
@@ -68,6 +127,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
         <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            aria-label={t("palette.open")}
+            title={t("palette.open")}
+            className="hidden h-11 items-center gap-2 rounded-xl border border-line bg-surface px-3 text-sm text-ink-muted hover:text-ink md:flex"
+          >
+            <Search size={16} />
+            <span className="font-mono text-[11px]">Ctrl K</span>
+          </button>
+          <button type="button" onClick={() => setPaletteOpen(true)} aria-label={t("palette.open")} className="btn-icon md:hidden">
+            <Search />
+          </button>
           <Link href="/inbox" aria-label={t("inbox.notifications")} className="btn-icon relative">
             <Bell />
             {(stats?.unread_notifications ?? 0) > 0 && <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-warn ring-2 ring-paper-2" />}
@@ -80,7 +152,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             >
               {user.name.slice(0, 1).toUpperCase()}
             </summary>
-            <div className="absolute right-0 z-30 mt-2 w-56 rounded-xl border border-line bg-white p-2 shadow-lift">
+            <div className="absolute right-0 z-30 mt-2 w-56 rounded-xl border border-line bg-surface p-2 shadow-lift">
               <div className="px-3 py-2">
                 <div className="truncate font-bold">{user.name}</div>
                 <div className="truncate text-xs text-ink-muted">{user.email}</div>
@@ -99,6 +171,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <SyncBanner />
       <div id="main" className="flex min-h-0 flex-1 flex-col">{children}</div>
       <ConflictDialog />
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <OverdueDialog />
     </div>
   );

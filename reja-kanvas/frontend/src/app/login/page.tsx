@@ -55,18 +55,18 @@ export default function LoginPage() {
           <span className="font-display text-2xl font-extrabold tracking-tight">Reja<span className="text-accent">.</span></span>
         </div>
         <div aria-hidden="true" className="relative mx-auto h-[360px] w-[560px]">
-          <div className="absolute left-0 top-6 w-64 -rotate-2 rounded-2xl bg-card-yellow p-4 shadow-card">
+          <div className="absolute left-0 top-6 w-64 -rotate-2 card-scope rounded-2xl bg-card-yellow p-4 text-ink shadow-card">
             <div className="font-mono text-xs text-[#6B4E00]">15:00</div>
             <div className="mt-1 font-display text-xl font-bold">Mijozga taqdimot</div>
             <div className="mt-3 h-1.5 rounded bg-black/10"><div className="h-1.5 w-3/5 rounded bg-ink" /></div>
           </div>
-          <div className="absolute right-6 top-0 w-60 rotate-2 rounded-2xl bg-card-mint p-4 shadow-card">
+          <div className="absolute right-6 top-0 w-60 rotate-2 card-scope rounded-2xl bg-card-mint p-4 text-ink shadow-card">
             <div className="font-display text-xl font-bold text-[#4A5A50] line-through decoration-2">Yugurish — 5 km</div>
             <div className="absolute -right-3 -top-3 flex -rotate-12 items-center gap-1 rounded-lg border-[2.5px] border-ok bg-card-mint px-2 py-1 font-display text-sm font-extrabold tracking-widest text-ok">
               <Check size={14} />BAJARILDI
             </div>
           </div>
-          <div className="absolute bottom-0 left-40 w-64 rotate-[-4deg] rounded-2xl bg-card-lilac p-4 shadow-lift">
+          <div className="absolute bottom-0 left-40 w-64 rotate-[-4deg] card-scope rounded-2xl bg-card-lilac p-4 text-ink shadow-lift">
             <div className="text-xs font-bold text-[#3E2A9E]">Har kuni</div>
             <div className="mt-1 font-display text-xl font-bold">Kitob: 30 sahifa</div>
           </div>
@@ -108,7 +108,7 @@ export default function LoginPage() {
               type="button"
               aria-selected={mode === m}
               onClick={() => { setMode(m); setError(null); }}
-              className={`h-10 flex-1 rounded-lg text-sm font-bold ${mode === m ? "bg-white shadow-sm" : "text-ink-3"}`}
+              className={`h-10 flex-1 rounded-lg text-sm font-bold ${mode === m ? "bg-surface shadow-sm" : "text-ink-3"}`}
             >
               {m === "login" ? t("auth.login") : t("auth.register")}
             </button>

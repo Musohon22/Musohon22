@@ -40,7 +40,7 @@ export function EmptyState({ onBlank }: { onBlank: () => void }) {
               type="button"
               disabled={!!busy}
               onClick={() => void apply(tpl.key)}
-              className="group flex flex-col gap-3 rounded-2xl border border-line bg-white p-3 text-left transition hover:-translate-y-0.5 hover:shadow-card disabled:opacity-60"
+              className="group flex flex-col gap-3 rounded-2xl border border-line bg-surface p-3 text-left transition hover:-translate-y-0.5 hover:shadow-card disabled:opacity-60"
             >
               <span aria-hidden="true" className="relative h-14">
                 {tpl.colors.map((c, i) => (

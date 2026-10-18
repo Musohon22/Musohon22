@@ -1,0 +1,15 @@
+{
+  "name": "Reja — rejalar kanvasi",
+  "short_name": "Reja",
+  "description": "Rejalarni kanvasga joylang, bajaring va tasdiqlang.",
+  "start_url": "/canvas",
+  "display": "standalone",
+  "background_color": "#F4F1EA",
+  "theme_color": "#F4F1EA",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }],
+  "shortcuts": [
+    { "name": "Kanvas", "url": "/canvas" },
+    { "name": "Kalendar", "url": "/calendar" },
+    { "name": "Ro'yxat", "url": "/list" }
+  ]
+}

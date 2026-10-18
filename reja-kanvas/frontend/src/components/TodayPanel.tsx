@@ -33,9 +33,9 @@ export function TodayPanel({ plans }: { plans: Plan[] }) {
         <h2 className="eyebrow">{t("today.title")}</h2>
         <div className="mt-3 flex items-center gap-4">
           <svg width="112" height="112" viewBox="0 0 120 120" role="img" aria-label={t("today.ring", { done, total })}>
-            <circle cx="60" cy="60" r="50" fill="none" stroke="#E6E0D3" strokeWidth="12" />
+            <circle cx="60" cy="60" r="50" fill="none" className="stroke-line" strokeWidth="12" />
             <circle
-              cx="60" cy="60" r="50" fill="none" stroke="#2B59FF" strokeWidth="12" strokeLinecap="round"
+              cx="60" cy="60" r="50" fill="none" className="stroke-accent" strokeWidth="12" strokeLinecap="round"
               strokeDasharray={`${pct * C} ${C}`} transform="rotate(-90 60 60)" style={{ transition: "stroke-dasharray .5s" }}
             />
             <text x="60" y="60" textAnchor="middle" className="fill-ink font-display" fontWeight="800" fontSize="28">{done}/{total}</text>
@@ -61,7 +61,7 @@ export function TodayPanel({ plans }: { plans: Plan[] }) {
           <Link
             key={p.id}
             href={`/plan/${p.id}`}
-            className="flex items-center gap-3 rounded-xl border border-line-soft bg-white px-3 py-2.5 hover:border-line-strong"
+            className="flex items-center gap-3 rounded-xl border border-line-soft bg-surface px-3 py-2.5 hover:border-line-strong"
           >
             <span className={`w-11 font-mono text-xs ${new Date(p.due_at!) < new Date() ? "font-bold text-warn-strong" : "text-ink-muted"}`}>
               {fmtTime(p.due_at!, user.tz, lang)}
@@ -74,7 +74,7 @@ export function TodayPanel({ plans }: { plans: Plan[] }) {
 
       {(stats?.awaiting_my_approval ?? 0) > 0 && (
         <section className="flex flex-col gap-3 rounded-2xl bg-ink p-5 text-paper">
-          <div className="text-xs font-bold uppercase tracking-[0.08em] text-[#CFC9BC]">{t("inbox.approvals")}</div>
+          <div className="text-xs font-bold uppercase tracking-[0.08em] text-paper/75">{t("inbox.approvals")}</div>
           <div className="font-display text-lg font-bold leading-snug">{t("today.awaiting", { n: stats!.awaiting_my_approval })}</div>
           <Link href="/inbox" className="flex h-11 items-center justify-center rounded-xl bg-paper font-extrabold text-ink">{t("today.open")}</Link>
         </section>

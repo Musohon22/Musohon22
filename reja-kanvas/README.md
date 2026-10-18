@@ -14,7 +14,7 @@ cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 uvicorn app.main:app --reload --port 8000
-python -m unittest discover tests      # 27 ta test
+python -m unittest discover tests      # 40 ta test
 ```
 
 Muhit o'zgaruvchilari (hammasi ixtiyoriy):
@@ -42,6 +42,9 @@ npm run dev                     # http://localhost:3000
 |---|---|
 | `/canvas` | Cheksiz kanvas, "Bugun / Ertaga / Shu hafta / Keyinroq" zonalari, sudrash, qidiruv, mini-xarita, "Tartibga solish", bugungi progress va seriya |
 | `/plan/:id` | Word'ga o'xshash hujjat (sarlavha, maqsad, mezon, bosqichlar, formatlangan matn) va 3 qadamli tasdiqlash paneli, tarix |
+| `/calendar` | Oylik kalendar, kunni tanlab tez qo'shish |
+| `/analytics` | Bajarilganlar, vaqtida bajarish ulushi, seriya, teglar va vaqt sarfi |
+| Ctrl/Cmd+K | Buyruqlar paneli: "ertaga 15:00 uchrashuv #ish !yuqori" kabi gapdan reja yaratish, qidiruv |
 | `/list` | Xuddi shu rejalar oddiy ro'yxat ko'rinishida (klaviatura va ekran o'quvchilar uchun qulay) |
 | `/inbox` | Tasdig'ingizni kutayotgan rejalar va bildirishnomalar |
 | `/trash` | 30 kunlik savatcha |
@@ -81,12 +84,9 @@ npm run dev                     # http://localhost:3000
 
 ## Tekshirilgan va tekshirilmagan qismlar
 
-- **Backend**: 27 ta avtomatik test o'tadi (`python -m unittest discover tests`), server ishga tushirilib, qo'lda ham tekshirildi.
+- **Backend**: 40 ta avtomatik test o'tadi (`python -m unittest discover tests`), server ishga tushirilib, qo'lda ham tekshirildi.
 - **Frontend**: bu muhitda npm registriga kirish yo'q edi, shuning uchun `npm install` va `next build` ishga tushirilmagan. Kod React, Next va TipTap uchun vaqtinchalik tur zaglushkalari bilan TypeScript'da tekshirildi, sof mantiq (vaqt mintaqalari, kirillga o'girish, qidiruv, avtomatik tartiblash) Node'da sinab ko'rildi. Birinchi `npm install && npm run build` da kichik tur xatolari chiqishi mumkin.
 
-## Hali qilinmagan
+## Keyingi bosqichlar
 
-- Kalendar ko'rinishi va kartalar orasidagi bog'lovchi chiziqlar (maketda bor edi).
-- Push yoki email bildirishnomalari: hozircha faqat ilova ichidagi bildirishnomalar.
-- Parolni tiklash, jamoa yoki ish maydonlari.
-- Real vaqtda birgalikda tahrirlash: hozir ziddiyatlar saqlash paytida aniqlanadi.
+To'liq funksiyalar katalogi (nima tayyor, nima keyingi navbatda): [FEATURES.md](FEATURES.md).

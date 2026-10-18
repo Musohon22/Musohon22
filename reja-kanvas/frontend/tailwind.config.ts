@@ -1,16 +1,22 @@
 import type { Config } from "tailwindcss";
 
+const v = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
+
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
-        paper: { DEFAULT: "#F4F1EA", 2: "#FBF9F4", 3: "#ECE7DC" },
-        line: { DEFAULT: "#E2DDD1", soft: "#EEEAE1", strong: "#D3CCBC" },
-        ink: { DEFAULT: "#1B1D22", 2: "#3A3D45", 3: "#4A4E57", muted: "#5B5F69" },
-        accent: { DEFAULT: "#2B59FF", ink: "#1E44D6", soft: "#E4EAFF" },
-        warn: { DEFAULT: "#E8590C", ink: "#8A3B0A", soft: "#FFE6D6", strong: "#B33A00" },
-        ok: { DEFAULT: "#12804A", ink: "#0F4D2C", soft: "#DDF2E3" },
+        // Theme tokens live in globals.css as RGB triplets so light/dark swap in one place.
+        paper: { DEFAULT: v("paper"), 2: v("paper-2"), 3: v("paper-3") },
+        line: { DEFAULT: v("line"), soft: v("line-soft"), strong: v("line-strong") },
+        ink: { DEFAULT: v("ink"), 2: v("ink-2"), 3: v("ink-3"), muted: v("ink-muted") },
+        surface: v("surface"),
+        accent: { DEFAULT: v("accent"), ink: v("accent-ink"), soft: v("accent-soft") },
+        warn: { DEFAULT: v("warn"), ink: v("warn-ink"), soft: v("warn-soft"), strong: v("warn-strong") },
+        ok: { DEFAULT: v("ok"), ink: v("ok-ink"), soft: v("ok-soft") },
+        chart: { 1: v("chart-1"), 2: v("chart-2") },
         card: {
           yellow: "#FFF1BF",
           mint: "#DDF2E3",

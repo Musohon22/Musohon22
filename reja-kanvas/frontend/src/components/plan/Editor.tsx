@@ -152,7 +152,7 @@ function Toolbar({ editor }: { editor: TipTap }) {
   }
 
   return (
-    <div role="toolbar" aria-label={t("ed.toolbar")} className="sticky top-0 z-10 -mx-2 flex flex-wrap items-center gap-0.5 rounded-xl border border-line bg-white/95 p-1 backdrop-blur">
+    <div role="toolbar" aria-label={t("ed.toolbar")} className="sticky top-0 z-10 -mx-2 flex flex-wrap items-center gap-0.5 rounded-xl border border-line bg-surface/95 p-1 backdrop-blur">
       <Btn label={t("ed.undo")} onClick={() => chain().undo().run()}><Undo size={17} /></Btn>
       <Btn label={t("ed.redo")} onClick={() => chain().redo().run()}><Redo size={17} /></Btn>
       <Sep />
@@ -219,7 +219,7 @@ function Toolbar({ editor }: { editor: TipTap }) {
               e.preventDefault();
               applyLink();
             }}
-            className="absolute left-0 top-11 z-20 flex w-72 gap-1 rounded-xl border border-line bg-white p-2 shadow-lift"
+            className="absolute left-0 top-11 z-20 flex w-72 gap-1 rounded-xl border border-line bg-surface p-2 shadow-lift"
           >
             <label className="flex-1">
               <span className="sr-only">{t("ed.link")}</span>

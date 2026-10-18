@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { api } from "@/lib/api";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { needsConfirmPanel, submitWithUndo } from "@/lib/actions";
@@ -42,11 +43,16 @@ export default function ListPage() {
   }, [planMap, user.tz]);
 
   const empty = loaded && Object.keys(planMap).length === 0;
+  const [archive, setArchive] = useState<Plan[] | null>(null);
+  const toggleArchive = () => {
+    if (archive) return setArchive(null);
+    api.get<{ plans: Plan[] }>("/api/plans?archived=1").then((r) => setArchive(r.plans)).catch(() => setArchive([]));
+  };
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-8 sm:px-6">
       {empty && (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-line bg-white p-10 text-center">
+        <div className="flex flex-col items-center gap-4 rounded-2xl border border-line bg-surface p-10 text-center">
           <p className="text-lg font-semibold text-ink-3">{t("list.empty")}</p>
           <Link href="/canvas" className="btn-primary"><Grid size={16} />{t("nav.canvas")}</Link>
         </div>
@@ -63,7 +69,7 @@ export default function ListPage() {
               {items.map((p) => {
                 const open = p.status === "active" || p.status === "returned";
                 return (
-                  <li key={p.id} className="flex items-center gap-3 rounded-xl border border-line bg-white p-2 pr-3">
+                  <li key={p.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface p-2 pr-3">
                     <button
                       type="button"
                       disabled={!open}
@@ -96,6 +102,23 @@ export default function ListPage() {
           </section>
         );
       })}
+      <section className="flex flex-col gap-2 border-t border-dashed border-line-strong pt-6">
+        <button type="button" className="self-start text-sm font-bold text-accent-ink underline underline-offset-2" aria-expanded={!!archive} onClick={toggleArchive}>
+          {archive ? t("list.hideArchive") : t("list.showArchive")}
+        </button>
+        {archive?.length === 0 && <p className="text-sm text-ink-muted">{t("list.empty")}</p>}
+        <ul className="flex flex-col gap-2">
+          {archive?.map((p) => (
+            <li key={p.id}>
+              <Link href={`/plan/${p.id}`} className="flex items-center gap-3 rounded-xl border border-line-soft bg-paper-2 p-3 text-ink-3">
+                <span aria-hidden="true" className={`h-6 w-1.5 flex-none rounded-full ${CARD_BG[p.color]}`} />
+                <span className="min-w-0 flex-1 truncate line-through">{p.title}</span>
+                <span className="text-xs">{t(`status.${p.status}`)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
     </main>
   );
 }

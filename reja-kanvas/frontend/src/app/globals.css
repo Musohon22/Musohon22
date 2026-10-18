@@ -2,6 +2,90 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme tokens (RGB triplets). Pastel cards keep light-theme ink in dark mode: .card-scope. */
+:root,
+.card-scope {
+  --paper: 244 241 234;
+  --paper-2: 251 249 244;
+  --paper-3: 236 231 220;
+  --line: 226 221 209;
+  --line-soft: 238 234 225;
+  --line-strong: 211 204 188;
+  --ink: 27 29 34;
+  --ink-2: 58 61 69;
+  --ink-3: 74 78 87;
+  --ink-muted: 91 95 105;
+  --surface: 255 255 255;
+  --accent: 43 89 255;
+  --accent-ink: 30 68 214;
+  --accent-soft: 228 234 255;
+  --warn: 232 89 12;
+  --warn-ink: 138 59 10;
+  --warn-soft: 255 230 214;
+  --warn-strong: 179 58 0;
+  --ok: 18 128 74;
+  --ok-ink: 15 77 44;
+  --ok-soft: 221 242 227;
+  --chart-1: 43 89 255;
+  --chart-2: 232 89 12;
+  --dot: 211 204 188;
+  color-scheme: light;
+}
+.dark {
+  --paper: 22 23 26;
+  --paper-2: 28 30 34;
+  --paper-3: 37 39 45;
+  --line: 54 57 64;
+  --line-soft: 43 46 52;
+  --line-strong: 74 78 86;
+  --ink: 236 233 226;
+  --ink-2: 216 212 204;
+  --ink-3: 192 188 180;
+  --ink-muted: 163 160 153;
+  --surface: 32 34 39;
+  --accent: 91 127 255;
+  --accent-ink: 160 182 255;
+  --accent-soft: 35 45 84;
+  --warn: 224 101 28;
+  --warn-ink: 255 184 146;
+  --warn-soft: 70 38 20;
+  --warn-strong: 255 146 96;
+  --ok: 64 190 122;
+  --ok-ink: 164 232 194;
+  --ok-soft: 22 58 39;
+  --chart-1: 91 127 255;
+  --chart-2: 224 101 28;
+  --dot: 58 61 69;
+  color-scheme: dark;
+}
+.dark .card-scope {
+  --paper: 244 241 234;
+  --paper-2: 251 249 244;
+  --paper-3: 236 231 220;
+  --line: 226 221 209;
+  --line-soft: 238 234 225;
+  --line-strong: 211 204 188;
+  --ink: 27 29 34;
+  --ink-2: 58 61 69;
+  --ink-3: 74 78 87;
+  --ink-muted: 91 95 105;
+  --surface: 255 255 255;
+  --accent: 43 89 255;
+  --accent-ink: 30 68 214;
+  --accent-soft: 228 234 255;
+  --warn: 232 89 12;
+  --warn-ink: 138 59 10;
+  --warn-soft: 255 230 214;
+  --warn-strong: 179 58 0;
+  --ok: 18 128 74;
+  --ok-ink: 15 77 44;
+  --ok-soft: 221 242 227;
+  --chart-1: 43 89 255;
+  --chart-2: 232 89 12;
+  --dot: 211 204 188;
+  color-scheme: light;
+}
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
@@ -10,7 +94,7 @@
     @apply bg-paper font-sans text-ink antialiased;
   }
   :focus-visible {
-    outline: 3px solid #2b59ff;
+    outline: 3px solid rgb(var(--accent));
     outline-offset: 2px;
   }
   @media (prefers-reduced-motion: reduce) {
@@ -25,22 +109,22 @@
 
 @layer components {
   .btn {
-    @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-line bg-white px-4 text-sm font-bold text-ink transition hover:bg-paper-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 text-sm font-bold text-ink transition hover:bg-paper-2 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-primary {
-    @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-accent px-5 text-sm font-bold text-white shadow-[0_6px_16px_-6px_rgba(43,89,255,.6)] transition hover:bg-accent-ink disabled:cursor-not-allowed disabled:bg-[#C9C3B5] disabled:text-ink-2 disabled:shadow-none;
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-accent px-5 text-sm font-bold text-white shadow-[0_6px_16px_-6px_rgba(43,89,255,.6)] transition hover:bg-accent-ink disabled:cursor-not-allowed disabled:bg-line-strong disabled:text-ink-3 disabled:shadow-none;
   }
   .btn-dark {
     @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-ink px-5 text-sm font-bold text-paper transition hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-danger {
-    @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-warn/40 bg-white px-4 text-sm font-bold text-warn-strong transition hover:bg-warn-soft;
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-warn/40 bg-surface px-4 text-sm font-bold text-warn-strong transition hover:bg-warn-soft;
   }
   .btn-icon {
     @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-ink-2 transition hover:bg-paper-3 disabled:opacity-40;
   }
   .field {
-    @apply h-11 w-full rounded-xl border border-line bg-white px-3 text-[15px] text-ink placeholder:text-ink-muted/80 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:bg-paper-2 disabled:text-ink-3;
+    @apply h-11 w-full rounded-xl border border-line bg-surface px-3 text-[15px] text-ink placeholder:text-ink-muted/80 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:bg-paper-2 disabled:text-ink-3;
   }
   .label {
     @apply text-xs font-semibold text-ink-muted;
@@ -57,8 +141,8 @@
 }
 
 .canvas-dots {
-  background-color: #f4f1ea;
-  background-image: radial-gradient(#d3ccbc 1.2px, transparent 1.2px);
+  background-color: rgb(var(--paper));
+  background-image: radial-gradient(rgb(var(--dot)) 1.2px, transparent 1.2px);
 }
 
 @keyframes toastbar {
@@ -72,7 +156,7 @@
 
 /* Rich-text editor (TipTap / ProseMirror) */
 .prose-plan {
-  @apply text-[16px] leading-[1.7] text-[#2A2D33];
+  @apply text-[16px] leading-[1.7] text-ink-2;
 }
 .prose-plan:focus {
   outline: none;
@@ -104,6 +188,7 @@
 .prose-plan mark {
   @apply rounded-sm px-0.5;
   background-color: #ffe07a;
+  color: #1b1d22;
 }
 .prose-plan code {
   @apply rounded bg-paper-3 px-1 font-mono text-[0.9em];
@@ -131,5 +216,5 @@
   float: left;
   height: 0;
   pointer-events: none;
-  color: #5b5f69;
+  color: rgb(var(--ink-muted));
 }

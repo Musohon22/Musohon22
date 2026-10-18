@@ -34,7 +34,7 @@ export function Minimap({
       type="button"
       aria-label={t("canvas.minimap")}
       title={t("canvas.minimap")}
-      className="absolute bottom-3 right-3 hidden overflow-hidden rounded-xl border border-line bg-white/95 p-0 shadow-card sm:block"
+      className="absolute bottom-3 right-3 hidden overflow-hidden rounded-xl border border-line bg-surface/95 p-0 shadow-card sm:block"
       style={{ width: W, height: H }}
       onClick={(e) => {
         const r = e.currentTarget.getBoundingClientRect();

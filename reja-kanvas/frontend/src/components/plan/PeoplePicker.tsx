@@ -42,7 +42,7 @@ export function PeoplePicker({
     <div className="flex flex-col gap-1.5">
       <span className="label">{label}</span>
       {person ? (
-        <div className="flex h-11 items-center gap-2 rounded-xl border border-line bg-white pl-2 pr-1">
+        <div className="flex h-11 items-center gap-2 rounded-xl border border-line bg-surface pl-2 pr-1">
           <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[#9FC3FF] text-xs font-extrabold text-[#0E2A66]">
             {person.name.slice(0, 1).toUpperCase()}
           </span>

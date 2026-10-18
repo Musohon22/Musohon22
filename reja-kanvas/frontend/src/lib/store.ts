@@ -375,11 +375,16 @@ export function createPlan(fields: Partial<Plan> & { title: string; x: number; y
     late_minutes: null, rating: null, final_note: null, return_reason: null, escalated_at: null,
     version: 1, deleted_at: null, created_at: now, updated_at: now, owner_id: state.user?.id ?? "",
     approver_id: null, backup_approver_id: null, my_role: "owner", can_decide: false,
+    priority: "normal", recurrence: null, series_id: null, next_occurrence_id: null, archived_at: null,
+    tracked_seconds: 0, timer_started_at: null, blocked_by: [],
     progress: { done: 0, total: steps?.length ?? 0, cancelled: 0 },
     ...rest,
   };
   set({ plans: { ...state.plans, [id]: plan } });
-  const body: Record<string, unknown> = { id, title: plan.title, x: plan.x, y: plan.y, color: plan.color, tag: plan.tag, due_at: plan.due_at };
+  const body: Record<string, unknown> = {
+    id, title: plan.title, x: plan.x, y: plan.y, color: plan.color, tag: plan.tag, due_at: plan.due_at,
+    priority: plan.priority, recurrence: plan.recurrence,
+  };
   if (steps?.length) body.steps = steps;
   enqueue({ id: uuid(), kind: "create", planId: id, body });
   return id;
@@ -399,24 +404,34 @@ export function movePlans(items: { id: string; x: number; y: number }[]) {
   for (const it of items) movePlan(it.id, it.x, it.y);
 }
 
-/** Moves a plan to the trash with a 10-second "Undo" toast. */
-export function deletePlan(id: string) {
-  const plan = state.plans[id];
-  const { [id]: _gone, ...rest } = state.plans;
-  set({ plans: rest });
-  const itemId = uuid();
-  enqueue({ id: itemId, kind: "delete", planId: id });
+/** Moves plans to the trash with one 10-second "Undo" toast. */
+export function deletePlans(ids: string[]) {
+  const removed = ids.map((id) => state.plans[id]).filter(Boolean);
+  const plans = { ...state.plans };
+  for (const id of ids) delete plans[id];
+  set({ plans });
+  const itemIds = ids.map((planId) => {
+    const itemId = uuid();
+    enqueue({ id: itemId, kind: "delete", planId });
+    return itemId;
+  });
   toast(t("trash.deleted"), {
     action: {
       label: t("confirm.undo"),
       run: () => {
-        const stillQueued = state.outbox.some((i) => i.id === itemId);
-        if (stillQueued) set({ outbox: state.outbox.filter((i) => i.id !== itemId) });
-        else enqueue({ id: uuid(), kind: "restore", planId: id });
-        if (plan) set({ plans: { ...state.plans, [id]: plan } });
+        ids.forEach((id, i) => {
+          const stillQueued = state.outbox.some((x) => x.id === itemIds[i]);
+          if (stillQueued) set({ outbox: state.outbox.filter((x) => x.id !== itemIds[i]) });
+          else enqueue({ id: uuid(), kind: "restore", planId: id });
+        });
+        set({ plans: { ...state.plans, ...Object.fromEntries(removed.map((p) => [p.id, p])) } });
       },
     },
   });
+}
+
+export function deletePlan(id: string) {
+  deletePlans([id]);
 }
 
 export function restorePlan(id: string) {

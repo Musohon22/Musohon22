@@ -48,7 +48,7 @@ export default function TrashPage() {
       )}
       <ul className="flex flex-col gap-2">
         {plans?.map((p) => (
-          <li key={p.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-white p-3">
+          <li key={p.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface p-3">
             <div className="min-w-0 flex-1 basis-56">
               <div className="truncate font-semibold">{p.title}</div>
               <div className={`text-xs ${daysLeft(p.purge_at) <= 3 ? "font-bold text-warn-strong" : "text-ink-muted"}`}>{t("trash.daysLeft", { n: daysLeft(p.purge_at) })}</div>

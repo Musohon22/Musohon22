@@ -4,6 +4,14 @@ export type PlanStatus = "active" | "pending_approval" | "returned" | "done" | "
 export type StepStatus = "todo" | "done" | "cancelled";
 export type Rating = "excellent" | "good" | "partial";
 export type Role = "owner" | "approver" | "backup";
+export type Priority = "low" | "normal" | "high" | "urgent";
+
+export interface Recurrence {
+  freq: "daily" | "weekly" | "monthly";
+  interval: number;
+  weekdays: number[];
+  until: string | null;
+}
 
 export interface User {
   id: string;
@@ -55,6 +63,14 @@ export interface Plan {
   approver_id: string | null;
   backup_approver_id: string | null;
   progress: Progress;
+  priority: Priority;
+  recurrence: Recurrence | null;
+  series_id: string | null;
+  next_occurrence_id: string | null;
+  archived_at: string | null;
+  tracked_seconds: number;
+  timer_started_at: string | null;
+  blocked_by: string[];
   my_role?: Role | null;
   can_decide?: boolean;
   purge_at?: string;
@@ -86,6 +102,7 @@ export interface PlanDetail extends Plan {
   backup_approver: Person | null;
   approved_by: Person | null;
   blockers?: string[];
+  open_blockers?: { id: string; title: string; status: PlanStatus }[];
 }
 
 /** Fields a client may change with PATCH /plans/:id. */
@@ -93,7 +110,7 @@ export type PlanChanges = Partial<
   Pick<
     PlanDetail,
     | "title" | "body_html" | "tag" | "color" | "x" | "y" | "due_at" | "remind_minutes"
-    | "goal" | "done_criteria" | "require_proof" | "approver_id" | "backup_approver_id"
+    | "goal" | "done_criteria" | "require_proof" | "approver_id" | "backup_approver_id" | "priority" | "recurrence"
   >
 >;
 
@@ -142,4 +159,48 @@ export interface Conflict {
   fields: (keyof PlanChanges)[];
   mine: PlanChanges;
   server: PlanDetail;
+}
+
+export interface Comment {
+  id: string;
+  plan_id: string;
+  user_id: string | null;
+  user_name: string | null;
+  body: string;
+  created_at: string;
+  edited_at: string | null;
+}
+
+export interface ParsedPlan {
+  title: string;
+  due_at: string | null;
+  tag: string | null;
+  priority: Priority | null;
+  recurrence: Recurrence | null;
+}
+
+export interface Analytics {
+  days: number;
+  series: { date: string; done: number; created: number }[];
+  total_done: number;
+  total_created: number;
+  open_now: number;
+  overdue_now: number;
+  on_time: number;
+  late: number;
+  on_time_rate: number | null;
+  avg_late_minutes: number | null;
+  weekday_done: number[];
+  by_tag: { tag: string; done: number; open: number }[];
+  by_priority: Record<Priority, number>;
+  tracked_by_tag: { tag: string; seconds: number }[];
+  tracked_total: number;
+  streak: number;
+  best_streak: number;
+}
+
+export interface TemplateInfo {
+  key: string;
+  count: number;
+  name?: string;
 }
