@@ -14,6 +14,9 @@ FRONTEND_ORIGINS = [
     if o.strip()
 ]
 
+# Where the web app lives; used in links inside emails (password reset, notifications).
+FRONTEND_URL = os.environ.get("REJA_FRONTEND_URL", FRONTEND_ORIGINS[0] if FRONTEND_ORIGINS else "http://localhost:3000")
+
 TOKEN_TTL_DAYS = 30
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 MAX_ATTACHMENTS_PER_PLAN = 10

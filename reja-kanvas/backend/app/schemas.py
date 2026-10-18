@@ -58,6 +58,7 @@ class RegisterIn(Model):
 class LoginIn(Model):
     email: str = Field(max_length=200)
     password: str = Field(max_length=128)
+    code: Optional[str] = Field(default=None, max_length=20)
 
     @field_validator("email")
     @classmethod
@@ -111,6 +112,21 @@ class _PlanFields(Model):
     backup_approver_id: Optional[str] = None
     priority: Priority = "normal"
     recurrence: Optional[Recurrence] = None
+    parent_id: Optional[str] = None
+    goal_id: Optional[str] = None
+    board_id: Optional[str] = None
+    duration_minutes: Optional[int] = Field(default=None, ge=5, le=24 * 60)
+    approval_chain: list[str] = Field(default_factory=list, max_length=4)
+
+    @field_validator("parent_id", "goal_id", "board_id")
+    @classmethod
+    def _refs(cls, v):
+        return _uuid(v)
+
+    @field_validator("approval_chain")
+    @classmethod
+    def _chain(cls, v):
+        return [_uuid(x) for x in v]
 
     @field_validator("due_at")
     @classmethod
@@ -161,6 +177,20 @@ class PlanPatch(Model):
     backup_approver_id: Optional[str] = None
     priority: Optional[Priority] = None
     recurrence: Optional[Recurrence] = None
+    parent_id: Optional[str] = None
+    goal_id: Optional[str] = None
+    duration_minutes: Optional[int] = Field(default=None, ge=5, le=24 * 60)
+    approval_chain: Optional[list[str]] = Field(default=None, max_length=4)
+
+    @field_validator("parent_id", "goal_id")
+    @classmethod
+    def _refs(cls, v):
+        return _uuid(v)
+
+    @field_validator("approval_chain")
+    @classmethod
+    def _chain(cls, v):
+        return None if v is None else [_uuid(x) for x in v]
 
     @field_validator("due_at")
     @classmethod
@@ -174,7 +204,7 @@ class PlanPatch(Model):
 
     def changes(self) -> dict:
         data = {k: getattr(self, k) for k in self.model_fields_set if k != "base_version"}
-        for required in ("title", "color", "x", "y", "goal", "done_criteria", "require_proof", "body_html", "priority"):
+        for required in ("title", "color", "x", "y", "goal", "done_criteria", "require_proof", "body_html", "priority", "approval_chain"):
             if required in data and data[required] is None:
                 raise ValueError(f"{required} cannot be null")
         return data
@@ -205,11 +235,53 @@ class StepPatch(Model):
     text: Optional[str] = Field(default=None, min_length=1, max_length=300)
     status: Optional[StepStatus] = None
     position: Optional[int] = Field(default=None, ge=0)
+    due_at: Optional[datetime] = None
+    assignee_id: Optional[str] = None
+
+    @field_validator("due_at")
+    @classmethod
+    def _due(cls, v):
+        return _aware(v)
+
+    @field_validator("assignee_id")
+    @classmethod
+    def _assignee(cls, v):
+        return _uuid(v)
+
+
+class StepOrder(Model):
+    ids: list[str] = Field(min_length=1, max_length=50)
+
+
+SIGNATURE_MAX = 300_000  # a drawn signature as a PNG data URL
+
+
+def _signature(v: Optional[str]) -> Optional[str]:
+    if v is None:
+        return None
+    if not v.startswith("data:image/png;base64,") or len(v) > SIGNATURE_MAX:
+        raise ValueError("signature must be a PNG data URL under 300 KB")
+    return v
 
 
 class SubmitIn(Model):
     final_note: str = Field(default="", max_length=2000)
     rating: Optional[Rating] = None
+    signature: Optional[str] = None
+
+    @field_validator("signature")
+    @classmethod
+    def _sig(cls, v):
+        return _signature(v)
+
+
+class ApproveIn(Model):
+    signature: Optional[str] = None
+
+    @field_validator("signature")
+    @classmethod
+    def _sig(cls, v):
+        return _signature(v)
 
 
 class RejectIn(Model):
@@ -278,3 +350,175 @@ class ParseIn(Model):
 class ImportIn(Model):
     version: int = 1
     plans: list[dict] = Field(max_length=2000)
+
+
+# ---- next-stage features ----------------------------------------------------------------------
+
+class TimeEntryIn(Model):
+    started_at: datetime
+    minutes: int = Field(ge=1, le=24 * 60)
+    note: str = Field(default="", max_length=300)
+
+    @field_validator("started_at")
+    @classmethod
+    def _aware_start(cls, v):
+        return _aware(v)
+
+
+class ReactionIn(Model):
+    emoji: Literal["👍", "❤️", "🎉", "✅", "👀", "🙏"]
+
+
+class GoalIn(Model):
+    title: str = Field(min_length=1, max_length=120)
+    description: str = Field(default="", max_length=2000)
+    target_date: Optional[Date] = None
+    color: Color = "sky"
+
+
+class GoalPatch(Model):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    description: Optional[str] = Field(default=None, max_length=2000)
+    target_date: Optional[Date] = None
+    color: Optional[Color] = None
+    archived: Optional[bool] = None
+
+
+class FilterQuery(Model):
+    text: str = Field(default="", max_length=100)
+    tags: list[str] = Field(default_factory=list, max_length=20)
+    priorities: list[Priority] = Field(default_factory=list, max_length=4)
+    statuses: list[Literal["active", "pending_approval", "returned", "done", "cancelled"]] = Field(default_factory=list, max_length=5)
+    due: Optional[Literal["overdue", "today", "week", "none"]] = None
+    mine_only: bool = False
+
+
+class SavedFilterIn(Model):
+    name: str = Field(min_length=1, max_length=60)
+    query: FilterQuery
+
+
+class TeamIn(Model):
+    name: str = Field(min_length=1, max_length=60)
+
+
+class MemberIn(Model):
+    email: str = Field(max_length=200)
+    role: Literal["admin", "member", "viewer"] = "member"
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str) -> str:
+        return v.lower()
+
+
+class MemberRole(Model):
+    role: Literal["owner", "admin", "member", "viewer"]
+
+
+class BoardIn(Model):
+    name: str = Field(min_length=1, max_length=60)
+    team_id: Optional[str] = None
+
+    @field_validator("team_id")
+    @classmethod
+    def _team(cls, v):
+        return _uuid(v)
+
+
+class BoardRename(Model):
+    name: str = Field(min_length=1, max_length=60)
+
+
+class MoveBoard(Model):
+    board_id: Optional[str] = None
+
+    @field_validator("board_id")
+    @classmethod
+    def _board(cls, v):
+        return _uuid(v)
+
+
+class AssignIn(Model):
+    user_id: str
+
+    @field_validator("user_id")
+    @classmethod
+    def _uid(cls, v):
+        return _uuid(v)
+
+
+class CanvasItemIn(Model):
+    id: Optional[str] = None
+    board_id: Optional[str] = None
+    kind: Literal["note", "frame"]
+    x: float = Field(ge=-COORD, le=COORD)
+    y: float = Field(ge=-COORD, le=COORD)
+    w: float = Field(ge=40, le=8000)
+    h: float = Field(ge=40, le=8000)
+    text: str = Field(default="", max_length=2000)
+    color: Color = "yellow"
+
+    @field_validator("id", "board_id")
+    @classmethod
+    def _ids(cls, v):
+        return _uuid(v)
+
+
+class CanvasItemPatch(Model):
+    x: Optional[float] = Field(default=None, ge=-COORD, le=COORD)
+    y: Optional[float] = Field(default=None, ge=-COORD, le=COORD)
+    w: Optional[float] = Field(default=None, ge=40, le=8000)
+    h: Optional[float] = Field(default=None, ge=40, le=8000)
+    text: Optional[str] = Field(default=None, max_length=2000)
+    color: Optional[Color] = None
+
+
+class Prefs(Model):
+    email_kinds: list[str] = Field(default_factory=list, max_length=20)
+    digest: bool = False
+    quiet_start: Optional[str] = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    quiet_end: Optional[str] = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    large_text: bool = False
+    high_contrast: bool = False
+    onboarded: bool = False
+
+
+class ForgotIn(Model):
+    email: str = Field(max_length=200)
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str) -> str:
+        return v.lower().strip()
+
+
+class ResetIn(Model):
+    token: str = Field(min_length=10, max_length=200)
+    password: str = Field(min_length=8, max_length=128)
+
+
+class TotpCode(Model):
+    code: str = Field(min_length=6, max_length=20)
+
+
+class TotpDisable(Model):
+    password: str = Field(max_length=128)
+    code: str = Field(min_length=6, max_length=20)
+
+
+class ApiKeyIn(Model):
+    name: str = Field(min_length=1, max_length=60)
+
+
+WEBHOOK_EVENTS = ("plan.created", "plan.submitted", "plan.completed", "plan.returned", "plan.deleted", "comment.created")
+
+
+class WebhookIn(Model):
+    url: str = Field(min_length=8, max_length=500)
+    events: list[Literal["plan.created", "plan.submitted", "plan.completed", "plan.returned", "plan.deleted", "comment.created"]] = Field(min_length=1, max_length=6)
+
+
+class ExternalImport(Model):
+    format: Literal["csv", "todoist", "trello"]
+    content: str = Field(min_length=1, max_length=5_000_000)

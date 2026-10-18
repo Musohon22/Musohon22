@@ -4,14 +4,24 @@ import re
 import uuid
 
 from .errors import ApiError, not_found
-from .plans import load_for, notify, stamp
+from .plans import approval_chain, load_for, notify, stamp
 
 _MENTION = re.compile(r"@([^\s@]+@[^\s@]+\.[^\s@,;:!?]+)")
 EDIT_WINDOW_SECONDS = 15 * 60
 
 
-def participants(plan) -> set[str]:
-    return {u for u in (plan["owner_id"], plan["approver_id"], plan["backup_approver_id"]) if u}
+def participants(conn, plan) -> set[str]:
+    """Everyone who can see the plan: owner, approvers, backup, and the board's team."""
+    people = {u for u in (plan["owner_id"], *approval_chain(plan), plan["backup_approver_id"]) if u}
+    if plan["board_id"]:
+        people |= {
+            r["user_id"]
+            for r in conn.execute(
+                "SELECT m.user_id FROM boards b JOIN team_members m ON m.team_id = b.team_id WHERE b.id = ?",
+                (plan["board_id"],),
+            )
+        }
+    return people
 
 
 def _row(conn, comment_id: str):
@@ -22,8 +32,18 @@ def _row(conn, comment_id: str):
     ).fetchone()
 
 
-def list_for(conn, plan) -> list[dict]:
-    return [
+def load_visible(conn, comment_id: str, user_id: str):
+    row = _row(conn, comment_id)
+    if row is None:
+        raise not_found("comment")
+    load_for(conn, row["plan_id"], user_id)
+    return row
+
+
+def list_for(conn, plan, user_id: str | None = None) -> list[dict]:
+    from .planning import reactions_for
+
+    items = [
         dict(r)
         for r in conn.execute(
             """SELECT c.id, c.plan_id, c.user_id, c.body, c.created_at, c.edited_at, u.name AS user_name
@@ -31,6 +51,10 @@ def list_for(conn, plan) -> list[dict]:
             (plan["id"],),
         )
     ]
+    reactions = reactions_for(conn, [c["id"] for c in items], user_id or "")
+    for c in items:
+        c["reactions"] = reactions[c["id"]]
+    return items
 
 
 def add(conn, plan, user_id: str, body: str) -> dict:
@@ -39,7 +63,7 @@ def add(conn, plan, user_id: str, body: str) -> dict:
         "INSERT INTO comments(id, plan_id, user_id, body, created_at) VALUES (?,?,?,?,?)",
         (cid, plan["id"], user_id, body, stamp()),
     )
-    people = participants(plan)
+    people = participants(conn, plan)
     mentioned: set[str] = set()
     for email in _MENTION.findall(body):
         row = conn.execute("SELECT id FROM users WHERE email = ?", (email.lower(),)).fetchone()
@@ -47,9 +71,14 @@ def add(conn, plan, user_id: str, body: str) -> dict:
         if row and row["id"] in people and row["id"] != user_id:
             mentioned.add(row["id"])
             notify(conn, row["id"], plan["id"], "mentioned", title=plan["title"])
-    for uid in people - mentioned - {user_id}:
+    # Plain comments notify the people directly on the plan; the wider team only when mentioned.
+    direct = {u for u in (plan["owner_id"], *approval_chain(plan), plan["backup_approver_id"]) if u}
+    for uid in direct - mentioned - {user_id}:
         notify(conn, uid, plan["id"], "commented", title=plan["title"])
-    return dict(_row(conn, cid))
+    from . import webhooks
+
+    webhooks.enqueue(conn, plan["owner_id"], "comment.created", {"plan_id": plan["id"], "plan_title": plan["title"], "body": body})
+    return {**dict(_row(conn, cid)), "reactions": []}
 
 
 def load_own(conn, comment_id: str, user_id: str):

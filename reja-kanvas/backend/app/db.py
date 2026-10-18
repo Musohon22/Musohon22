@@ -4,7 +4,7 @@ from pathlib import Path
 
 from . import config
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -162,6 +162,142 @@ MIGRATIONS: dict[int, list[str]] = {
         )""",
         "CREATE INDEX IF NOT EXISTS time_entries_user ON time_entries(user_id, started_at)",
         "CREATE UNIQUE INDEX IF NOT EXISTS users_ics_token ON users(ics_token)",
+    ],
+    3: [
+        # plans: nesting, time blocks, goals, boards, approval chain
+        "ALTER TABLE plans ADD COLUMN parent_id TEXT REFERENCES plans(id) ON DELETE SET NULL",
+        "ALTER TABLE plans ADD COLUMN duration_minutes INTEGER",
+        "ALTER TABLE plans ADD COLUMN goal_id TEXT",
+        "ALTER TABLE plans ADD COLUMN board_id TEXT",
+        "ALTER TABLE plans ADD COLUMN approval_chain TEXT NOT NULL DEFAULT '[]'",
+        "ALTER TABLE plans ADD COLUMN approval_stage INTEGER NOT NULL DEFAULT 0",
+        "CREATE INDEX IF NOT EXISTS plans_parent ON plans(parent_id)",
+        "CREATE INDEX IF NOT EXISTS plans_board ON plans(board_id, deleted_at)",
+        # steps: own due date and assignee
+        "ALTER TABLE steps ADD COLUMN due_at TEXT",
+        "ALTER TABLE steps ADD COLUMN assignee_id TEXT REFERENCES users(id) ON DELETE SET NULL",
+        # attachments shown inside the notes (images) rather than as proof
+        "ALTER TABLE attachments ADD COLUMN inline INTEGER NOT NULL DEFAULT 0",
+        # users: preferences, two-factor auth
+        "ALTER TABLE users ADD COLUMN prefs TEXT NOT NULL DEFAULT '{}'",
+        "ALTER TABLE users ADD COLUMN totp_secret TEXT",
+        "ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN recovery_codes TEXT NOT NULL DEFAULT '[]'",
+        "ALTER TABLE users ADD COLUMN last_digest_on TEXT",
+        "ALTER TABLE notifications ADD COLUMN emailed_at TEXT",
+        """CREATE TABLE IF NOT EXISTS sessions (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            user_agent TEXT NOT NULL DEFAULT '',
+            ip TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            last_seen_at TEXT NOT NULL,
+            revoked_at TEXT
+        )""",
+        "CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id)",
+        """CREATE TABLE IF NOT EXISTS password_resets (
+            token_hash TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            expires_at TEXT NOT NULL,
+            used_at TEXT
+        )""",
+        """CREATE TABLE IF NOT EXISTS api_keys (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            prefix TEXT NOT NULL,
+            key_hash TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL,
+            last_used_at TEXT,
+            revoked_at TEXT
+        )""",
+        """CREATE TABLE IF NOT EXISTS webhooks (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            url TEXT NOT NULL,
+            secret TEXT NOT NULL,
+            events TEXT NOT NULL,
+            active INTEGER NOT NULL DEFAULT 1,
+            failures INTEGER NOT NULL DEFAULT 0,
+            last_status TEXT,
+            created_at TEXT NOT NULL
+        )""",
+        """CREATE TABLE IF NOT EXISTS webhook_deliveries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            webhook_id TEXT NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
+            event TEXT NOT NULL,
+            payload TEXT NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            next_attempt_at TEXT NOT NULL,
+            delivered_at TEXT,
+            last_error TEXT,
+            created_at TEXT NOT NULL
+        )""",
+        "CREATE INDEX IF NOT EXISTS webhook_deliveries_due ON webhook_deliveries(delivered_at, next_attempt_at)",
+        """CREATE TABLE IF NOT EXISTS goals (
+            id TEXT PRIMARY KEY,
+            owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            target_date TEXT,
+            color TEXT NOT NULL DEFAULT 'sky',
+            archived_at TEXT,
+            created_at TEXT NOT NULL
+        )""",
+        """CREATE TABLE IF NOT EXISTS saved_filters (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            query TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )""",
+        """CREATE TABLE IF NOT EXISTS comment_reactions (
+            comment_id TEXT NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            emoji TEXT NOT NULL,
+            PRIMARY KEY (comment_id, user_id, emoji)
+        )""",
+        """CREATE TABLE IF NOT EXISTS signatures (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            plan_id TEXT NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+            role TEXT NOT NULL,
+            image TEXT NOT NULL,
+            signed_at TEXT NOT NULL
+        )""",
+        "ALTER TABLE time_entries ADD COLUMN note TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE time_entries ADD COLUMN manual INTEGER NOT NULL DEFAULT 0",
+        """CREATE TABLE IF NOT EXISTS teams (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+            created_at TEXT NOT NULL
+        )""",
+        """CREATE TABLE IF NOT EXISTS team_members (
+            team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            role TEXT NOT NULL,
+            joined_at TEXT NOT NULL,
+            PRIMARY KEY (team_id, user_id)
+        )""",
+        """CREATE TABLE IF NOT EXISTS boards (
+            id TEXT PRIMARY KEY,
+            owner_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+            team_id TEXT REFERENCES teams(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )""",
+        """CREATE TABLE IF NOT EXISTS canvas_items (
+            id TEXT PRIMARY KEY,
+            owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            board_id TEXT,
+            kind TEXT NOT NULL,
+            x REAL NOT NULL, y REAL NOT NULL, w REAL NOT NULL, h REAL NOT NULL,
+            text TEXT NOT NULL DEFAULT '',
+            color TEXT NOT NULL DEFAULT 'yellow',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )""",
     ],
 }
 

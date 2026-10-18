@@ -16,8 +16,14 @@ ALLOWED: dict[str, set[str]] = {
     "a": {"href", "target", "rel"},
     "mark": {"data-color", "style"}, "span": {"style"},
     "label": set(), "input": {"type", "checked", "disabled"},
+    "table": set(), "colgroup": set(), "col": {"style"}, "thead": set(), "tbody": set(), "tr": set(),
+    "th": {"colspan", "rowspan", "colwidth"}, "td": {"colspan", "rowspan", "colwidth"},
+    "img": {"src", "alt", "width", "height"},
 }
-VOID = {"br", "hr", "input"}
+VOID = {"br", "hr", "input", "img", "col"}
+# Images may only come from this app's own signed file links (no tracking pixels, no remote loads).
+_OWN_FILE = re.compile(r"^(https?://[^\s\"'<>/]+)?/api/files/[0-9a-f-]{36}\?sig=[0-9a-f]{64}$")
+_NUMBER = re.compile(r"^\d{1,4}$")
 DROP_WITH_CONTENT = {"script", "style", "iframe", "object", "embed", "noscript", "template", "svg", "math", "head", "title"}
 
 _SAFE_HREF = re.compile(r"^(https?:|mailto:)", re.I)
@@ -64,12 +70,20 @@ class _Sanitizer(HTMLParser):
                     continue
             elif name == "type" and value != "checkbox":
                 continue
+            elif name == "src" and not _OWN_FILE.match(value.strip()):
+                continue
+            elif name in ("colspan", "rowspan", "width", "height") and not _NUMBER.match(value):
+                continue
+            elif name == "colwidth" and not re.match(r"^\d{1,4}(,\d{1,4})*$", value):
+                continue
             elif name == "target":
                 value = "_blank"
             clean.append((name, value))
         if tag == "a":
             clean = [a for a in clean if a[0] != "rel"] + [("rel", "noopener noreferrer nofollow")]
         if tag == "input" and ("type", "checkbox") not in clean:
+            return
+        if tag == "img" and not any(n == "src" for n, _ in clean):
             return
         rendered = "".join(
             f' {n}="{html.escape(v, quote=True)}"' if v != "" else f" {n}" for n, v in clean

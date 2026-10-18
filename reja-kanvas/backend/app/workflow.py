@@ -8,13 +8,13 @@ from datetime import timedelta
 from . import config, dependencies, recurrence, timeutil, tracking
 from .errors import ApiError, forbidden
 from .plans import (
-    LOCKED_STATUSES, load, load_for, log_event, notify, progress_map, purge_expired,
-    serialize, stamp,
+    LOCKED_STATUSES, approval_chain, can_edit_role, current_approver, load, load_for, log_event,
+    notify, progress_map, purge_expired, role_of, serialize, stamp,
 )
 
 _CLEAR_COMPLETION = {
     "submitted_at": None, "completed_at": None, "approved_at": None, "approved_by": None,
-    "late_minutes": None, "approval_reminded_at": None, "escalated_at": None,
+    "late_minutes": None, "approval_reminded_at": None, "escalated_at": None, "approval_stage": 0,
 }
 
 
@@ -43,8 +43,13 @@ def readiness(conn, plan: sqlite3.Row) -> list[str]:
     prog = progress_map(conn, [plan["id"]])[plan["id"]]
     if prog["done"] < prog["total"]:
         blockers.append("steps_incomplete")
+    if conn.execute(
+        "SELECT 1 FROM plans WHERE parent_id = ? AND deleted_at IS NULL AND status NOT IN ('done', 'cancelled') LIMIT 1",
+        (plan["id"],),
+    ).fetchone():
+        blockers.append("children_open")
     if plan["require_proof"]:
-        has = conn.execute("SELECT 1 FROM attachments WHERE plan_id = ? LIMIT 1", (plan["id"],)).fetchone()
+        has = conn.execute("SELECT 1 FROM attachments WHERE plan_id = ? AND inline = 0 LIMIT 1", (plan["id"],)).fetchone()
         if not has:
             blockers.append("proof_required")
     return blockers
@@ -65,8 +70,10 @@ def submit(conn, plan: sqlite3.Row, user_id: str, data) -> dict:
     now = stamp()
     late = _late_minutes(plan)
     common = dict(final_note=data.final_note, rating=data.rating, late_minutes=late, submitted_at=now, return_reason=None)
+    if data.signature:
+        _sign(conn, plan["id"], user_id, "owner", data.signature)
     if plan["approver_id"]:
-        _update(conn, plan["id"], status="pending_approval", approval_reminded_at=None, escalated_at=None, **common)
+        _update(conn, plan["id"], status="pending_approval", approval_reminded_at=None, escalated_at=None, approval_stage=0, **common)
         log_event(conn, plan["id"], user_id, "submitted", late_minutes=late)
         notify(conn, plan["approver_id"], plan["id"], "approval_requested", title=plan["title"])
     else:
@@ -76,9 +83,27 @@ def submit(conn, plan: sqlite3.Row, user_id: str, data) -> dict:
     return serialize(conn, load(conn, plan["id"]), user_id, detail=True)
 
 
-def approve(conn, plan: sqlite3.Row, user_id: str) -> dict:
+def _sign(conn, plan_id: str, user_id: str, role: str, image: str) -> None:
+    conn.execute(
+        "INSERT INTO signatures(plan_id, user_id, role, image, signed_at) VALUES (?,?,?,?,?)",
+        (plan_id, user_id, role, image, stamp()),
+    )
+
+
+def approve(conn, plan: sqlite3.Row, user_id: str, signature: str | None = None) -> dict:
     _require_decider(plan, user_id)
     now = stamp()
+    stage = plan["approval_stage"] or 0
+    chain = approval_chain(plan)
+    if signature:
+        _sign(conn, plan["id"], user_id, f"stage{stage + 1}", signature)
+    if stage + 1 < len(chain):
+        # Multi-step approval: hand over to the next person in the chain.
+        _update(conn, plan["id"], approval_stage=stage + 1, approval_reminded_at=None, escalated_at=None)
+        log_event(conn, plan["id"], user_id, "stage_approved", stage=stage + 1, of=len(chain))
+        notify(conn, chain[stage + 1], plan["id"], "approval_requested", title=plan["title"])
+        notify(conn, plan["owner_id"], plan["id"], "stage_approved", title=plan["title"], stage=stage + 1, of=len(chain))
+        return serialize(conn, load(conn, plan["id"]), user_id, detail=True)
     # The work counts on the day it was submitted, not the day someone got round to approving it.
     _update(conn, plan["id"], status="done", completed_at=plan["submitted_at"], approved_at=now, approved_by=user_id)
     log_event(conn, plan["id"], user_id, "approved")
@@ -98,7 +123,7 @@ def reject(conn, plan: sqlite3.Row, user_id: str, data) -> dict:
 def _require_decider(plan: sqlite3.Row, user_id: str) -> None:
     if plan["status"] != "pending_approval":
         raise ApiError(409, "invalid_status", status=plan["status"])
-    if plan["approver_id"] == user_id:
+    if current_approver(plan) == user_id:
         return
     if plan["backup_approver_id"] == user_id:
         if plan["escalated_at"] is None:
@@ -110,8 +135,8 @@ def _require_decider(plan: sqlite3.Row, user_id: str) -> None:
 def reopen(conn, plan: sqlite3.Row, user_id: str, data) -> dict:
     """Undo a confirmation (the 10-second toast), withdraw a pending submission, or reopen a
     finished/cancelled plan. Always recorded in the history."""
-    is_owner = plan["owner_id"] == user_id
-    is_approver = user_id in (plan["approver_id"], plan["backup_approver_id"])
+    is_owner = can_edit_role(role_of(conn, plan, user_id))
+    is_approver = user_id in (*approval_chain(plan), plan["backup_approver_id"])
     if plan["status"] == "pending_approval":
         if not is_owner:
             raise forbidden("owner_only")
@@ -129,7 +154,7 @@ def reopen(conn, plan: sqlite3.Row, user_id: str, data) -> dict:
     if plan["approved_by"] and plan["approved_by"] != user_id:
         notify(conn, plan["approved_by"], plan["id"], "reopened", title=plan["title"])
     if plan["status"] == "pending_approval":
-        notify(conn, plan["approver_id"], plan["id"], "withdrawn", title=plan["title"])
+        notify(conn, current_approver(plan), plan["id"], "withdrawn", title=plan["title"])
     return serialize(conn, load(conn, plan["id"]), user_id, detail=True)
 
 
@@ -191,7 +216,7 @@ def run_jobs(conn) -> dict:
            AND approval_reminded_at IS NULL AND submitted_at <= ?""",
         (remind_before,),
     ).fetchall():
-        notify(conn, plan["approver_id"], plan["id"], "approval_reminder", title=plan["title"])
+        notify(conn, current_approver(plan), plan["id"], "approval_reminder", title=plan["title"])
         conn.execute("UPDATE plans SET approval_reminded_at = ? WHERE id = ?", (timeutil.to_iso(now), plan["id"]))
         counts["reminded"] += 1
 

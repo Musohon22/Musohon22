@@ -11,14 +11,17 @@ from .sanitize import html_to_text, sanitize_html
 from .translit import normalize
 
 # Fields whose concurrent edits are detected; x/y are last-write-wins (dragging must never conflict).
+STEP_COLUMNS = "id, text, status, position, done_at, due_at, assignee_id"
 TRACKED = (
     "title", "body_html", "tag", "color", "due_at", "remind_minutes", "goal",
     "done_criteria", "require_proof", "approver_id", "backup_approver_id", "priority", "recurrence",
+    "parent_id", "goal_id", "duration_minutes", "approval_chain",
 )
+MAX_DEPTH = 3
 POSITION = ("x", "y")
 # Once submitted or confirmed, the content is frozen until the plan is reopened.
 LOCKED_STATUSES = ("pending_approval", "done")
-EDITABLE_WHEN_LOCKED = {"color", "tag", "x", "y", "priority"}
+EDITABLE_WHEN_LOCKED = {"color", "tag", "x", "y", "priority", "goal_id", "duration_minutes"}
 PRIORITY_ORDER = "CASE priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END"
 
 
@@ -35,6 +38,9 @@ def log_event(conn, plan_id: str, user_id: str | None, kind: str, **data) -> Non
         "INSERT INTO events(plan_id, user_id, kind, data, created_at) VALUES (?,?,?,?,?)",
         (plan_id, user_id, kind, json.dumps(data, ensure_ascii=False), stamp()),
     )
+    from . import webhooks  # local import: webhooks imports this module
+
+    webhooks.on_event(conn, plan_id, kind)
 
 
 def notify(conn, user_id: str | None, plan_id: str | None, kind: str, **data) -> None:
@@ -85,21 +91,57 @@ def blockers_map(conn, plan_ids: list[str]) -> dict[str, list[str]]:
     return result
 
 
-def role_of(plan: sqlite3.Row, user_id: str) -> str | None:
+def approval_chain(plan: sqlite3.Row) -> list[str]:
+    """Approvers in order: the main approver, then any further stages."""
+    if not plan["approver_id"]:
+        return []
+    return [plan["approver_id"], *json.loads(plan["approval_chain"] or "[]")]
+
+
+def current_approver(plan: sqlite3.Row) -> str | None:
+    chain = approval_chain(plan)
+    stage = plan["approval_stage"] or 0
+    return chain[stage] if plan["status"] == "pending_approval" and stage < len(chain) else None
+
+
+def team_role(conn, board_id: str | None, user_id: str) -> str | None:
+    """The user's role in the team that owns this board, if it is a team board."""
+    if not board_id:
+        return None
+    row = conn.execute(
+        """SELECT m.role FROM boards b JOIN team_members m ON m.team_id = b.team_id
+           WHERE b.id = ? AND m.user_id = ?""",
+        (board_id, user_id),
+    ).fetchone()
+    return row["role"] if row else None
+
+
+EDIT_TEAM_ROLES = ("owner", "admin", "member")
+
+
+def role_of(conn, plan: sqlite3.Row, user_id: str) -> str | None:
     if plan["owner_id"] == user_id:
         return "owner"
-    if plan["approver_id"] == user_id:
+    if user_id in approval_chain(plan):
         return "approver"
     if plan["backup_approver_id"] == user_id:
         return "backup"
+    role = team_role(conn, plan["board_id"], user_id)
+    if role:
+        return "team" if role in EDIT_TEAM_ROLES else "viewer"
     return None
 
 
+def can_edit_role(role: str | None) -> bool:
+    return role in ("owner", "team")
+
+
 def can_decide(plan: sqlite3.Row, user_id: str) -> bool:
-    """The approver decides; the backup approver only once the request has been escalated."""
+    """The approver of the current stage decides; the backup approver only once the request has
+    been escalated."""
     if plan["status"] != "pending_approval":
         return False
-    if plan["approver_id"] == user_id:
+    if current_approver(plan) == user_id:
         return True
     return plan["backup_approver_id"] == user_id and plan["escalated_at"] is not None
 
@@ -116,29 +158,54 @@ def serialize(
             "late_minutes", "rating", "final_note", "return_reason", "escalated_at",
             "version", "deleted_at", "created_at", "updated_at", "owner_id",
             "approver_id", "backup_approver_id", "priority", "series_id", "next_occurrence_id",
-            "archived_at", "tracked_seconds", "timer_started_at",
+            "archived_at", "tracked_seconds", "timer_started_at", "parent_id", "duration_minutes",
+            "goal_id", "board_id", "approval_stage",
         )
     }
+    data["approval_chain"] = json.loads(plan["approval_chain"] or "[]")
     data["require_proof"] = bool(plan["require_proof"])
     data["recurrence"] = json.loads(plan["recurrence"]) if plan["recurrence"] else None
     data["blocked_by"] = blocked_by if blocked_by is not None else blockers_map(conn, [plan["id"]])[plan["id"]]
     data["progress"] = progress or progress_map(conn, [plan["id"]])[plan["id"]]
     if user_id:
-        data["my_role"] = role_of(plan, user_id)
+        data["my_role"] = role_of(conn, plan, user_id)
         data["can_decide"] = can_decide(plan, user_id)
     if detail:
         data["body_html"] = plan["body_html"]
         data["steps"] = [
             dict(r)
             for r in conn.execute(
-                "SELECT id, text, status, position, done_at FROM steps WHERE plan_id = ? ORDER BY position, created_at",
+                f"SELECT {STEP_COLUMNS} FROM steps WHERE plan_id = ? ORDER BY position, created_at",
                 (plan["id"],),
             )
         ]
         data["attachments"] = [
             dict(r)
             for r in conn.execute(
-                "SELECT id, filename, mime, size, created_at FROM attachments WHERE plan_id = ? ORDER BY created_at",
+                "SELECT id, filename, mime, size, created_at, inline FROM attachments WHERE plan_id = ? ORDER BY created_at",
+                (plan["id"],),
+            )
+        ]
+        for a in data["attachments"]:
+            a["inline"] = bool(a["inline"])
+        data["chain"] = [user_brief(conn, uid) for uid in approval_chain(plan)]
+        data["current_approver"] = user_brief(conn, current_approver(plan))
+        data["children"] = [
+            {**dict(r), "progress": None}
+            for r in conn.execute(
+                "SELECT id, title, status, due_at FROM plans WHERE parent_id = ? AND deleted_at IS NULL ORDER BY COALESCE(due_at, '9999'), created_at",
+                (plan["id"],),
+            )
+        ]
+        data["parent"] = (
+            dict(conn.execute("SELECT id, title FROM plans WHERE id = ?", (plan["parent_id"],)).fetchone() or {})
+            if plan["parent_id"] else None
+        )
+        data["signatures"] = [
+            dict(r)
+            for r in conn.execute(
+                """SELECT s.role, s.image, s.signed_at, u.name AS user_name FROM signatures s
+                   LEFT JOIN users u ON u.id = s.user_id WHERE s.plan_id = ? ORDER BY s.id""",
                 (plan["id"],),
             )
         ]
@@ -161,19 +228,24 @@ def load(conn, plan_id: str, *, include_deleted: bool = False) -> sqlite3.Row:
 
 
 def load_for(conn, plan_id: str, user_id: str, need: str = "view", *, include_deleted: bool = False) -> sqlite3.Row:
-    """need: 'view' (owner or approvers) or 'edit' (owner only). Strangers get 404, never 403,
-    so plan ids cannot be probed."""
+    """need: 'view' (owner, approvers, team) or 'edit' (owner, or a member of the plan's team
+    board). Strangers get 404, never 403, so plan ids cannot be probed."""
     plan = load(conn, plan_id, include_deleted=include_deleted)
-    role = role_of(plan, user_id)
+    role = role_of(conn, plan, user_id)
     if role is None:
         raise not_found()
-    if need == "edit" and role != "owner":
+    if need == "edit" and not can_edit_role(role):
         raise forbidden("owner_only")
     return plan
 
 
-def _check_people(conn, owner_id: str, approver_id: str | None, backup_id: str | None) -> None:
-    for uid in (approver_id, backup_id):
+def _check_people(conn, owner_id: str, approver_id: str | None, backup_id: str | None, chain: list[str] | None = None) -> None:
+    chain = chain or []
+    if chain and not approver_id:
+        raise ApiError(400, "chain_without_approver")
+    if len(set(chain)) != len(chain) or (approver_id and approver_id in chain):
+        raise ApiError(400, "chain_duplicate")
+    for uid in (approver_id, backup_id, *chain):
         if uid is None:
             continue
         if uid == owner_id:
@@ -186,10 +258,42 @@ def _check_people(conn, owner_id: str, approver_id: str | None, backup_id: str |
         raise ApiError(400, "backup_same_as_approver")
 
 
+def board_access(conn, board_id: str | None, user_id: str) -> str | None:
+    """'owner' for the user's personal boards, the team role for team boards, else None."""
+    if board_id is None:
+        return "owner"
+    row = conn.execute("SELECT owner_id, team_id FROM boards WHERE id = ?", (board_id,)).fetchone()
+    if row is None:
+        return None
+    if row["owner_id"]:
+        return "owner" if row["owner_id"] == user_id else None
+    return team_role(conn, board_id, user_id)
+
+
+def _check_refs(conn, user_id: str, board_id: str | None, plan_id: str | None, parent_id: str | None, goal_id: str | None) -> None:
+    if parent_id:
+        parent = conn.execute("SELECT id, board_id, parent_id, owner_id FROM plans WHERE id = ? AND deleted_at IS NULL", (parent_id,)).fetchone()
+        if parent is None or parent["board_id"] != board_id or (board_id is None and parent["owner_id"] != user_id):
+            raise ApiError(400, "parent_not_found")
+        # walk up: no cycles, limited depth
+        depth, node = 1, parent
+        while node is not None and node["parent_id"]:
+            if node["parent_id"] == plan_id or depth >= MAX_DEPTH:
+                raise ApiError(400, "parent_cycle" if node["parent_id"] == plan_id else "too_deep")
+            node = conn.execute("SELECT id, parent_id FROM plans WHERE id = ?", (node["parent_id"],)).fetchone()
+            depth += 1
+        if parent_id == plan_id:
+            raise ApiError(400, "parent_cycle")
+    if goal_id and conn.execute("SELECT 1 FROM goals WHERE id = ? AND owner_id = ?", (goal_id, user_id)).fetchone() is None:
+        raise ApiError(400, "goal_not_found")
+
+
 def list_for_owner(conn, user_id: str, q: str | None = None, *, archived: bool = False) -> list[dict]:
-    sql = "SELECT * FROM plans WHERE owner_id = ? AND deleted_at IS NULL"
+    """Everything on the user's canvases: their own plans plus every plan on their teams' boards."""
+    sql = """SELECT * FROM plans WHERE deleted_at IS NULL AND (owner_id = ? OR board_id IN (
+             SELECT b.id FROM boards b JOIN team_members m ON m.team_id = b.team_id WHERE m.user_id = ?))"""
     sql += " AND archived_at IS NOT NULL" if archived else " AND archived_at IS NULL"
-    args: list = [user_id]
+    args: list = [user_id, user_id]
     if q:
         sql += " AND search_key LIKE ?"
         args.append("%" + normalize(q).replace("%", "").replace("_", "") + "%")
@@ -198,16 +302,26 @@ def list_for_owner(conn, user_id: str, q: str | None = None, *, archived: bool =
     ids = [r["id"] for r in rows]
     prog = progress_map(conn, ids)
     deps = blockers_map(conn, ids)
-    return [serialize(conn, r, user_id, progress=prog[r["id"]], blocked_by=deps[r["id"]]) for r in rows]
+    out = []
+    names: dict[str, dict | None] = {}
+    for r in rows:
+        item = serialize(conn, r, user_id, progress=prog[r["id"]], blocked_by=deps[r["id"]])
+        if r["owner_id"] != user_id:
+            if r["owner_id"] not in names:
+                names[r["owner_id"]] = user_brief(conn, r["owner_id"])
+            item["owner"] = names[r["owner_id"]]
+        out.append(item)
+    return out
 
 
 def list_awaiting_me(conn, user_id: str) -> list[dict]:
-    rows = conn.execute(
+    candidates = conn.execute(
         """SELECT * FROM plans WHERE deleted_at IS NULL AND status = 'pending_approval'
-           AND (approver_id = ? OR (backup_approver_id = ? AND escalated_at IS NOT NULL))
+           AND (approver_id = ? OR backup_approver_id = ? OR approval_chain LIKE ?)
            ORDER BY submitted_at""",
-        (user_id, user_id),
+        (user_id, user_id, f'%"{user_id}"%'),
     ).fetchall()
+    rows = [r for r in candidates if can_decide(r, user_id)]
     prog = progress_map(conn, [r["id"] for r in rows])
     out = []
     for r in rows:
@@ -232,18 +346,24 @@ def create(conn, user_id: str, data) -> dict:
         return serialize(conn, load(conn, plan_id, include_deleted=True), user_id, detail=True)
     if len(data.steps) > config.MAX_STEPS_PER_PLAN:
         raise ApiError(400, "too_many_steps")
-    _check_people(conn, user_id, data.approver_id, data.backup_approver_id)
+    if board_access(conn, data.board_id, user_id) not in ("owner", "admin", "member"):
+        raise ApiError(404, "board_not_found")
+    _check_people(conn, user_id, data.approver_id, data.backup_approver_id, data.approval_chain)
+    _check_refs(conn, user_id, data.board_id, plan_id, data.parent_id, data.goal_id)
     body = sanitize_html(data.body_html)
     now = stamp()
     conn.execute(
         """INSERT INTO plans (id, owner_id, title, body_html, tag, color, x, y, due_at, remind_minutes,
            goal, done_criteria, require_proof, approver_id, backup_approver_id, priority, recurrence,
-           search_key, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+           parent_id, goal_id, board_id, duration_minutes, approval_chain,
+           search_key, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (
             plan_id, user_id, data.title, body, data.tag, data.color, data.x, data.y,
             timeutil.to_iso(data.due_at), data.remind_minutes, data.goal, data.done_criteria,
             int(data.require_proof), data.approver_id, data.backup_approver_id, data.priority,
-            recurrence_json(data.recurrence), _search_key(data.title, body, data.tag, data.goal), now, now,
+            recurrence_json(data.recurrence), data.parent_id, data.goal_id, data.board_id,
+            data.duration_minutes, json.dumps(data.approval_chain),
+            _search_key(data.title, body, data.tag, data.goal), now, now,
         ),
     )
     for pos, text in enumerate(data.steps):
@@ -263,6 +383,8 @@ def recurrence_json(value) -> str | None:
 
 
 def _normalize_value(field: str, value):
+    if field == "approval_chain":
+        return json.dumps(value or [])
     if field == "recurrence":
         return recurrence_json(value)
     if field == "due_at":
@@ -297,12 +419,15 @@ def apply_patch(conn, plan: sqlite3.Row, user_id: str | None, base_version: int,
             server=serialize(conn, plan, user_id, detail=True),
         )
 
-    if "approver_id" in changed or "backup_approver_id" in changed:
+    if {"approver_id", "backup_approver_id", "approval_chain"} & changed.keys():
         _check_people(
             conn, plan["owner_id"],
             changed.get("approver_id", plan["approver_id"]),
             changed.get("backup_approver_id", plan["backup_approver_id"]),
+            json.loads(changed.get("approval_chain", plan["approval_chain"]) or "[]"),
         )
+    if {"parent_id", "goal_id"} & changed.keys():
+        _check_refs(conn, plan["owner_id"], plan["board_id"], plan["id"], changed.get("parent_id"), changed.get("goal_id"))
 
     tracked_changed = [f for f in changed if f in TRACKED]
     version = plan["version"] + 1 if tracked_changed else plan["version"]
@@ -400,7 +525,7 @@ def add_step(conn, plan: sqlite3.Row, user_id: str, data) -> dict:
         (step_id, plan["id"], data.text, position, stamp()),
     )
     _touch(conn, plan["id"])
-    return dict(conn.execute("SELECT id, text, status, position, done_at FROM steps WHERE id = ?", (step_id,)).fetchone())
+    return dict(conn.execute(f"SELECT {STEP_COLUMNS} FROM steps WHERE id = ?", (step_id,)).fetchone())
 
 
 def load_step(conn, step_id: str, user_id: str) -> tuple[sqlite3.Row, sqlite3.Row]:
@@ -422,10 +547,45 @@ def update_step(conn, step: sqlite3.Row, plan: sqlite3.Row, user_id: str, data) 
         sets["status"] = data.status
         sets["done_at"] = stamp() if data.status == "done" else None
         log_event(conn, plan["id"], user_id, f"step_{data.status}", text=step["text"])
+    fields = data.model_fields_set
+    if "due_at" in fields:
+        sets["due_at"] = timeutil.to_iso(data.due_at)
+    if "assignee_id" in fields and data.assignee_id != step["assignee_id"]:
+        if data.assignee_id and data.assignee_id not in step_assignees(conn, plan):
+            raise ApiError(400, "assignee_not_member")
+        sets["assignee_id"] = data.assignee_id
+        if data.assignee_id and data.assignee_id != user_id:
+            notify(conn, data.assignee_id, plan["id"], "step_assigned", title=plan["title"], step=step["text"])
     if sets:
         conn.execute(f"UPDATE steps SET {', '.join(f'{k} = ?' for k in sets)} WHERE id = ?", (*sets.values(), step["id"]))
         _touch(conn, plan["id"])
-    return dict(conn.execute("SELECT id, text, status, position, done_at FROM steps WHERE id = ?", (step["id"],)).fetchone())
+    return dict(conn.execute(f"SELECT {STEP_COLUMNS} FROM steps WHERE id = ?", (step["id"],)).fetchone())
+
+
+def step_assignees(conn, plan: sqlite3.Row) -> set[str]:
+    """Who a step can be given to: the plan's owner and, on a team board, the team's editors."""
+    people = {plan["owner_id"]}
+    if plan["board_id"]:
+        people |= {
+            r["user_id"]
+            for r in conn.execute(
+                """SELECT m.user_id FROM boards b JOIN team_members m ON m.team_id = b.team_id
+                   WHERE b.id = ? AND m.role != 'viewer'""",
+                (plan["board_id"],),
+            )
+        }
+    return people
+
+
+def reorder_steps(conn, plan: sqlite3.Row, ids: list[str]) -> list[dict]:
+    _guard_steps(plan)
+    existing = [r["id"] for r in conn.execute("SELECT id FROM steps WHERE plan_id = ?", (plan["id"],))]
+    if sorted(existing) != sorted(ids):
+        raise ApiError(400, "step_order_mismatch")
+    for pos, sid in enumerate(ids):
+        conn.execute("UPDATE steps SET position = ? WHERE id = ?", (pos, sid))
+    _touch(conn, plan["id"])
+    return [dict(r) for r in conn.execute(f"SELECT {STEP_COLUMNS} FROM steps WHERE plan_id = ? ORDER BY position", (plan["id"],))]
 
 
 def delete_step(conn, step: sqlite3.Row, plan: sqlite3.Row) -> None:

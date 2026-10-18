@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from . import timeutil
 from .errors import ApiError
-from .plans import apply_patch, load, log_event, serialize, stamp
+from .plans import apply_patch, can_edit_role, load, log_event, role_of, serialize, stamp
 
 
 def create(conn, plan, user_id: str, data) -> dict:
@@ -28,10 +28,11 @@ def list_for(conn, plan) -> list[dict]:
 
 
 def revoke(conn, token: str, user_id: str) -> None:
-    row = conn.execute(
-        "SELECT s.*, p.owner_id FROM share_links s JOIN plans p ON p.id = s.plan_id WHERE s.token = ?", (token,)
-    ).fetchone()
-    if row is None or row["owner_id"] != user_id:
+    row = conn.execute("SELECT * FROM share_links WHERE token = ?", (token,)).fetchone()
+    if row is None:
+        raise ApiError(404, "share_not_found")
+    plan = conn.execute("SELECT * FROM plans WHERE id = ?", (row["plan_id"],)).fetchone()
+    if plan is None or not can_edit_role(role_of(conn, plan, user_id)):
         raise ApiError(404, "share_not_found")
     if row["revoked_at"] is None:
         conn.execute("UPDATE share_links SET revoked_at = ? WHERE token = ?", (stamp(), token))
@@ -53,9 +54,14 @@ def resolve(conn, token: str):
 def public_view(conn, row, plan) -> dict:
     data = serialize(conn, plan, None, detail=True)
     # A shared link shows the plan, not who is involved or what files are attached.
-    for key in ("owner_id", "approver_id", "backup_approver_id", "approver", "backup_approver", "approved_by", "attachments"):
+    for key in (
+        "owner_id", "approver_id", "backup_approver_id", "approver", "backup_approver", "approved_by",
+        "attachments", "chain", "current_approver", "approval_chain", "signatures", "goal_id", "board_id",
+    ):
         data.pop(key, None)
     data["owner"] = {"name": data["owner"]["name"]} if data.get("owner") else None
+    for step in data.get("steps", []):
+        step.pop("assignee_id", None)
     data["share_role"] = row["role"]
     data["share_expires_at"] = row["expires_at"]
     return data

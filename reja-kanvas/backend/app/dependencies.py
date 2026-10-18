@@ -24,7 +24,8 @@ def add(conn, plan, user_id: str, blocker_id: str) -> list[str]:
     blocker = load_for(conn, blocker_id, user_id)
     if blocker["id"] == plan["id"]:
         raise ApiError(400, "dependency_self")
-    if blocker["owner_id"] != plan["owner_id"]:
+    same_canvas = blocker["board_id"] == plan["board_id"] and (plan["board_id"] or blocker["owner_id"] == plan["owner_id"])
+    if not same_canvas:
         raise ApiError(400, "dependency_foreign")
     count = conn.execute("SELECT COUNT(*) FROM dependencies WHERE plan_id = ?", (plan["id"],)).fetchone()[0]
     if count >= MAX_BLOCKERS:

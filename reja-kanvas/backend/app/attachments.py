@@ -1,9 +1,11 @@
+import hashlib
+import hmac
 import re
 import uuid
 
 from starlette.datastructures import UploadFile
 
-from . import config
+from . import config, security
 from .errors import ApiError
 from .plans import log_event, stamp
 
@@ -16,6 +18,17 @@ ALLOWED = {
     "webp": ("image/webp", lambda b: b[:4] == b"RIFF" and b[8:12] == b"WEBP"),
 }
 _CHUNK = 1024 * 1024
+MAX_INLINE_PER_PLAN = 30
+INLINE_TYPES = {"png", "jpg", "jpeg", "webp"}
+
+
+def file_sig(att_id: str) -> str:
+    """Signature that lets an <img> in the notes load the file without the auth header."""
+    return hmac.new(security._key().encode(), f"file:{att_id}".encode(), hashlib.sha256).hexdigest()
+
+
+def file_url(att_id: str) -> str:
+    return f"/api/files/{att_id}?sig={file_sig(att_id)}"
 
 
 def clean_filename(name: str) -> str:
@@ -24,14 +37,15 @@ def clean_filename(name: str) -> str:
     return name[-120:]
 
 
-async def save(conn, plan, user_id: str, upload: UploadFile) -> dict:
-    count = conn.execute("SELECT COUNT(*) FROM attachments WHERE plan_id = ?", (plan["id"],)).fetchone()[0]
-    if count >= config.MAX_ATTACHMENTS_PER_PLAN:
-        raise ApiError(400, "too_many_attachments", limit=config.MAX_ATTACHMENTS_PER_PLAN)
+async def save(conn, plan, user_id: str, upload: UploadFile, inline: bool = False) -> dict:
+    limit = MAX_INLINE_PER_PLAN if inline else config.MAX_ATTACHMENTS_PER_PLAN
+    count = conn.execute("SELECT COUNT(*) FROM attachments WHERE plan_id = ? AND inline = ?", (plan["id"], int(inline))).fetchone()[0]
+    if count >= limit:
+        raise ApiError(400, "too_many_attachments", limit=limit)
     filename = clean_filename(upload.filename)
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-    if ext not in ALLOWED:
-        raise ApiError(400, "file_type_not_allowed", allowed=sorted(ALLOWED))
+    if ext not in ALLOWED or (inline and ext not in INLINE_TYPES):
+        raise ApiError(400, "file_type_not_allowed", allowed=sorted(INLINE_TYPES if inline else ALLOWED))
     mime, check = ALLOWED[ext]
 
     config.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -58,11 +72,15 @@ async def save(conn, plan, user_id: str, upload: UploadFile) -> dict:
 
     att_id = str(uuid.uuid4())
     conn.execute(
-        "INSERT INTO attachments(id, plan_id, user_id, filename, mime, size, stored_name, created_at) VALUES (?,?,?,?,?,?,?,?)",
-        (att_id, plan["id"], user_id, filename, mime, size, stored, stamp()),
+        "INSERT INTO attachments(id, plan_id, user_id, filename, mime, size, stored_name, created_at, inline) VALUES (?,?,?,?,?,?,?,?,?)",
+        (att_id, plan["id"], user_id, filename, mime, size, stored, stamp(), int(inline)),
     )
-    log_event(conn, plan["id"], user_id, "attached", filename=filename)
-    return {"id": att_id, "filename": filename, "mime": mime, "size": size, "created_at": stamp()}
+    if not inline:
+        log_event(conn, plan["id"], user_id, "attached", filename=filename)
+    out = {"id": att_id, "filename": filename, "mime": mime, "size": size, "created_at": stamp(), "inline": inline}
+    if inline:
+        out["url"] = file_url(att_id)
+    return out
 
 
 def remove(conn, att, plan, user_id: str) -> None:
