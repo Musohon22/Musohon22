@@ -1,0 +1,39 @@
+{
+  "name": "reja-kanvas",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tiptap/extension-color": "2.10.3",
+    "@tiptap/extension-highlight": "2.10.3",
+    "@tiptap/extension-link": "2.10.3",
+    "@tiptap/extension-placeholder": "2.10.3",
+    "@tiptap/extension-task-item": "2.10.3",
+    "@tiptap/extension-task-list": "2.10.3",
+    "@tiptap/extension-text-style": "2.10.3",
+    "@tiptap/extension-underline": "2.10.3",
+    "@tiptap/pm": "2.10.3",
+    "@tiptap/react": "2.10.3",
+    "@tiptap/starter-kit": "2.10.3",
+    "next": "14.2.15",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "20.17.6",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "autoprefixer": "10.4.20",
+    "eslint": "8.57.1",
+    "eslint-config-next": "14.2.15",
+    "postcss": "8.4.47",
+    "tailwindcss": "3.4.14",
+    "typescript": "5.6.3"
+  }
+}

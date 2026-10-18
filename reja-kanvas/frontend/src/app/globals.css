@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+  }
+  :focus-visible {
+    outline: 3px solid #2b59ff;
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 1ms !important;
+      transition-duration: 1ms !important;
+    }
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-line bg-white px-4 text-sm font-bold text-ink transition hover:bg-paper-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-accent px-5 text-sm font-bold text-white shadow-[0_6px_16px_-6px_rgba(43,89,255,.6)] transition hover:bg-accent-ink disabled:cursor-not-allowed disabled:bg-[#C9C3B5] disabled:text-ink-2 disabled:shadow-none;
+  }
+  .btn-dark {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-ink px-5 text-sm font-bold text-paper transition hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-danger {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-warn/40 bg-white px-4 text-sm font-bold text-warn-strong transition hover:bg-warn-soft;
+  }
+  .btn-icon {
+    @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-ink-2 transition hover:bg-paper-3 disabled:opacity-40;
+  }
+  .field {
+    @apply h-11 w-full rounded-xl border border-line bg-white px-3 text-[15px] text-ink placeholder:text-ink-muted/80 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:bg-paper-2 disabled:text-ink-3;
+  }
+  .label {
+    @apply text-xs font-semibold text-ink-muted;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-bold;
+  }
+  .eyebrow {
+    @apply text-xs font-bold uppercase tracking-[0.08em] text-ink-muted;
+  }
+  .sr-only-focusable:not(:focus) {
+    @apply sr-only;
+  }
+}
+
+.canvas-dots {
+  background-color: #f4f1ea;
+  background-image: radial-gradient(#d3ccbc 1.2px, transparent 1.2px);
+}
+
+@keyframes toastbar {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* Rich-text editor (TipTap / ProseMirror) */
+.prose-plan {
+  @apply text-[16px] leading-[1.7] text-[#2A2D33];
+}
+.prose-plan:focus {
+  outline: none;
+}
+.prose-plan > * + * {
+  margin-top: 0.6em;
+}
+.prose-plan h1 {
+  @apply font-display text-3xl font-bold tracking-tight text-ink;
+}
+.prose-plan h2 {
+  @apply font-display text-2xl font-bold tracking-tight text-ink;
+}
+.prose-plan h3 {
+  @apply font-display text-xl font-bold text-ink;
+}
+.prose-plan ul {
+  @apply list-disc pl-6;
+}
+.prose-plan ol {
+  @apply list-decimal pl-6;
+}
+.prose-plan blockquote {
+  @apply border-l-[3px] border-line-strong pl-4 italic text-ink-3;
+}
+.prose-plan a {
+  @apply font-semibold text-accent-ink underline underline-offset-2;
+}
+.prose-plan mark {
+  @apply rounded-sm px-0.5;
+  background-color: #ffe07a;
+}
+.prose-plan code {
+  @apply rounded bg-paper-3 px-1 font-mono text-[0.9em];
+}
+.prose-plan ul[data-type="taskList"] {
+  @apply list-none pl-0;
+}
+.prose-plan ul[data-type="taskList"] li {
+  @apply flex items-start gap-2;
+}
+.prose-plan ul[data-type="taskList"] li > label {
+  @apply mt-[5px] flex-none;
+}
+.prose-plan ul[data-type="taskList"] li > label input {
+  @apply h-4 w-4 accent-ok;
+}
+.prose-plan ul[data-type="taskList"] li > div {
+  @apply flex-1;
+}
+.prose-plan ul[data-type="taskList"] li[data-checked="true"] > div {
+  @apply text-ink-muted line-through;
+}
+.prose-plan p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: #5b5f69;
+}
