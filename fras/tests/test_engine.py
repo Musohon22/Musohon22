@@ -175,5 +175,14 @@ class DecisionTests(unittest.TestCase):
         self.assertEqual(self.d(attempt=1).result, "review")
 
 
+class LocalDayTests(unittest.TestCase):
+    def test_local_day_maps_to_utc_window(self):
+        from fras.util import local_day_bounds
+        # a Tashkent calendar day starts at 19:00 UTC the previous day; a UTC-midnight filter would miss 00:00–05:00 local
+        self.assertEqual(local_day_bounds("2026-10-20", "2026-10-20", "Asia/Tashkent"),
+                         ("2026-10-19T19:00:00Z", "2026-10-20T19:00:00Z"))
+        self.assertEqual(local_day_bounds("2026-10-01", "2026-10-31", "UTC"), ("2026-10-01T00:00:00Z", "2026-11-01T00:00:00Z"))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -11,7 +11,7 @@ from ..engine.attendance import Shift
 from ..errors import conflict, locked, not_found, unprocessable
 from ..http import Ctx, route
 from ..services import attendance_svc, settings_svc
-from ..util import daterange, dumps, loads, new_id, now_iso
+from ..util import daterange, dumps, loads, local_today, new_id, now_iso
 
 HHMM = r"^([01]\d|2[0-3]):[0-5]\d$"
 
@@ -169,8 +169,8 @@ def new_version(ctx: Ctx, body: TemplateIn):
                    (ctx.tenant_id, code))
     if not prev:
         raise not_found("Shift template")
-    valid_from = body.valid_from or date.today()
-    if valid_from < date.today():
+    valid_from = body.valid_from or local_today()
+    if valid_from < local_today():
         raise unprocessable("A new version can only take effect from today or later", "VALID_FROM_PAST")
     row = _template_row(ctx, body, prev["version"] + 1, valid_from)
     dbm.insert(ctx.conn, "shift_templates", row)
@@ -252,7 +252,7 @@ def _rest_conflicts(ctx: Ctx, plan: dict[tuple[str, str], str | None], employees
 
 def _write_plan(ctx: Ctx, plan: dict[tuple[str, str], str | None], source: str) -> tuple[int, str]:
     batch = new_id()
-    today = date.today().isoformat()
+    today = local_today().isoformat()
     touched_past = set()
     for (emp_id, day), code in plan.items():
         ctx.conn.execute("INSERT INTO shift_assignments (id, tenant_id, employee_id, work_date, shift_code, source, "
@@ -352,7 +352,7 @@ def set_cell(ctx: Ctx, body: CellIn):
         raise not_found("Employee")
     ctx.require_employee("shift.assign", emp)
     _check_period(ctx, [emp], body.work_date, body.work_date)
-    if body.work_date < date.today() and not (body.reason and len(body.reason) >= 10):
+    if body.work_date < local_today() and not (body.reason and len(body.reason) >= 10):
         raise unprocessable("Changing a past day needs a reason (min 10 characters)", "REASON_REQUIRED", field="reason")
     code = body.shift_code.upper() if body.shift_code else None
     if code and not attendance_svc.template_for(ctx.conn, ctx.tenant_id, code, body.work_date):
@@ -373,7 +373,7 @@ def set_cell(ctx: Ctx, body: CellIn):
 
 @route("GET", "/api/v1/shifts/schedule", perm="attendance.read")
 def schedule(ctx: Ctx):
-    start = date.fromisoformat(ctx.q("from", date.today().isoformat()))
+    start = date.fromisoformat(ctx.q("from", local_today().isoformat()))
     end = date.fromisoformat(ctx.q("to", (start + timedelta(days=13)).isoformat()))
     if (end - start).days > 62:
         raise unprocessable("At most 62 days per view", "RANGE_TOO_LARGE")
@@ -417,7 +417,7 @@ def schedule(ctx: Ctx):
 
 @route("GET", "/api/v1/calendar", perm="org.read")
 def calendar(ctx: Ctx):
-    year = ctx.q("year", date.today().year, int)
+    year = ctx.q("year", local_today().year, int)
     where = ["tenant_id = ?", "day BETWEEN ? AND ?"]
     params = [ctx.tenant_id, f"{year}-01-01", f"{year}-12-31"]
     if ctx.q("site_id"):
@@ -438,7 +438,7 @@ def _add_day(ctx: Ctx, body: CalendarIn) -> dict:
 
 
 def _recompute_site_day(ctx: Ctx, site_id: str, day: date) -> int:
-    if day > date.today():
+    if day > local_today():
         return 0
     n = 0
     for e in dbm.all_(ctx.conn, "SELECT id FROM employees WHERE tenant_id = ? AND site_id = ? AND status = 'active'",

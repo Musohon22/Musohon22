@@ -20,7 +20,7 @@ from .live import broker
 from .security import crypto
 from .services import attendance_svc, billing_svc, biometric_svc, captures, notify, settings_svc
 from .services.alerts import raise_alert
-from .util import iso, now_iso, parse_dt, utcnow
+from .util import iso, local_today, now_iso, parse_dt, utcnow
 
 log = logging.getLogger("fras.jobs")
 
@@ -53,7 +53,7 @@ def attendance_sweep(state, days: tuple[int, ...] = (0, 1)) -> int:
     with state.db.tx() as conn:
         for t in dbm.all_(conn, "SELECT id FROM tenants WHERE status = 'active'"):
             for back in days:
-                d = date.today() - timedelta(days=back)
+                d = local_today() - timedelta(days=back)
                 emps = dbm.all_(conn, "SELECT DISTINCT e.id FROM employees e LEFT JOIN shift_assignments a ON "
                                       "a.employee_id = e.id AND a.work_date = ? WHERE e.tenant_id = ? AND e.status = 'active' "
                                       "AND (a.shift_code IS NOT NULL OR EXISTS (SELECT 1 FROM daily_summaries s WHERE "
@@ -66,7 +66,7 @@ def attendance_sweep(state, days: tuple[int, ...] = (0, 1)) -> int:
 
 def absence_notifications(state) -> int:
     sent = 0
-    today = date.today().isoformat()
+    today = local_today().isoformat()
     with state.db.tx() as conn:
         for t in dbm.all_(conn, "SELECT id FROM tenants WHERE status = 'active'"):
             rows = dbm.all_(conn, "SELECT s.employee_id, e.last_name, e.first_name, e.site_id, e.department_id, e.team FROM "
@@ -158,7 +158,7 @@ def retention_purge(state) -> dict:
                                      "NULL AND captured_at < ?", (t["id"], cutoff)):
                 captures.delete(state.settings.data_dir, t["id"], ev["capture_ref"])
                 stats["captures"] += 1
-            term_cutoff = (date.today() - timedelta(days=r["template_after_termination_days"])).isoformat()
+            term_cutoff = (local_today() - timedelta(days=r["template_after_termination_days"])).isoformat()
             for e in dbm.all_(conn, "SELECT id FROM employees WHERE tenant_id = ? AND status = 'deactivated' AND "
                                     "deactivated_at <= ? AND biometric_status IN ('active','review')", (t["id"], term_cutoff)):
                 biometric_svc.revoke(conn, t["id"], e["id"], "retention_after_termination")

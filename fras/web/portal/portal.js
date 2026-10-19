@@ -2,7 +2,7 @@
 import { createApi } from '/assets/core/api.js';
 import { createRouter } from '/assets/core/router.js';
 import { h, clear, btn, field, input, select, textarea, checkbox, toast, errorText, statusBadge, emptyState, load, kv, modal, showError, form } from '/assets/core/ui.js';
-import { fmtDate, fmtTime, fmtDuration, fmtHours, todayISO, addDays, weekday, WEEKDAYS, localToUTC, DEFAULT_TZ } from '/assets/core/format.js';
+import { fmtDate, fmtTime, fmtDuration, fmtHours, fmtMonth, todayISO, addDays, weekday, WEEKDAYS, localToUTC, DEFAULT_TZ } from '/assets/core/format.js';
 
 const root = document.getElementById('root');
 const app = { me: null, home: null, tz: DEFAULT_TZ };
@@ -170,7 +170,7 @@ async function renderAttendance(main) {
   const isCurrent = month >= todayISO(app.tz).slice(0, 7);
   main.append(pageTitle('Davomatim'), h('div', { class: 'row', style: { justifyContent: 'space-between', margin: '8px 0' } },
     btn('‹', { variant: 'secondary', title: 'Oldingi oy', onClick: () => app.go(`/me/attendance?month=${prev()}`) }),
-    h('strong', {}, new Date(`${month}-01T00:00:00Z`).toLocaleDateString('uz-UZ', { month: 'long', year: 'numeric', timeZone: 'UTC' })),
+    h('strong', {}, fmtMonth(month)),
     btn('›', { variant: 'secondary', title: 'Keyingi oy', disabled: isCurrent ? 'Kelajak oy' : false, onClick: () => { if (!isCurrent) app.go(`/me/attendance?month=${next()}`); } })));
   const box = h('div'); main.append(box,
     h('div', { class: 'btn-bar', style: { marginTop: '12px' } }, btn('Tabel PDF', { variant: 'secondary', icon: '⤓', onClick: () => app.api.download(`/api/v1/portal/hours.pdf?month=${month}`).catch(showError) })));
@@ -185,7 +185,7 @@ async function renderAttendance(main) {
         h('div', { class: 'd' }, h('strong', {}, d.date.slice(8)), h('span', { class: 'caption' }, WEEKDAYS[weekday(d.date)])),
         h('div', { class: 'm' }, s ? `${s.first_in ? fmtTime(s.first_in, r.timezone) : '—'} → ${s.last_out ? fmtTime(s.last_out, r.timezone) : '—'}` : '—',
           h('div', { class: 'caption' }, s ? fmtDuration(s.worked_min) : '')),
-        h('div', {}, s ? statusBadge(s.status) : statusBadge('off'), d.dispute ? h('div', { class: 'caption' }, `E'tiroz: ${statusLabelUz(d.dispute)}`) : null));
+        h('div', {}, s ? statusBadge(s.status) : statusBadge(d.date === today ? 'scheduled' : 'off'), d.dispute ? h('div', { class: 'caption' }, `E'tiroz: ${statusLabelUz(d.dispute)}`) : null));
       const detail = h('div', { class: 'portal-day-detail', hidden: true },
         evs.length ? h('ul', {}, evs.map((e) => h('li', {}, `${fmtTime(e.captured_at, r.timezone)} · ${e.direction === 'in' ? 'Kirish' : 'Chiqish'} · ${e.gate || ''} · `, statusBadge(e.result)))) : h('p', { class: 'caption' }, "Qaydlar yo'q"),
         s?.late_min ? h('div', { class: 'caption' }, `Kechikish: ${fmtDuration(s.late_min)}`) : null,

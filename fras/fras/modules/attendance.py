@@ -11,7 +11,7 @@ from ..errors import ApiError, conflict, forbidden, not_found, unprocessable
 from ..http import Ctx, page_params, paged, route
 from ..live import broker
 from ..services import attendance_svc, notify
-from ..util import loads, new_id, now_iso, parse_dt
+from ..util import loads, local_day_bounds, local_today, new_id, now_iso, parse_dt
 
 
 class ReviewIn(BaseModel):
@@ -82,13 +82,14 @@ def list_events(ctx: Ctx):
     scope_sql, params = _event_scope(ctx)
     where = ["ev.tenant_id = ?", scope_sql]
     p = [ctx.tenant_id, *params]
-    frm = ctx.q("from", date.today().isoformat())
+    frm = ctx.q("from", local_today().isoformat())
     to = ctx.q("to", frm)
     if (date.fromisoformat(to) - date.fromisoformat(frm)).days > 93:
         raise unprocessable("Range is limited to 93 days; use reports for longer periods", "RANGE_TOO_LARGE")
+    sites = ctx.qlist("site_id")
+    zone = dbm.scalar(ctx.conn, "SELECT timezone FROM sites WHERE id = ?", (sites[0],)) if len(sites) == 1 else None
     where += ["ev.captured_at >= ?", "ev.captured_at < ?"]
-    p += [f"{frm}T00:00:00Z" if "T" not in frm else frm,
-          (date.fromisoformat(to[:10]) + timedelta(days=1)).isoformat() + "T00:00:00Z"]
+    p += list(local_day_bounds(frm, to, zone))
     tab = ctx.q("tab", "all")
     if tab == "suspicious":
         where.append("(ev.result IN ('pad','review','unknown') OR ev.clock_suspect = 1)")
@@ -213,8 +214,8 @@ def view_capture(ctx: Ctx, body: CaptureIn):
 
 @route("GET", "/api/v1/attendance/daily-summaries", perm="attendance.read", auth="user_or_api")
 def summaries(ctx: Ctx):
-    frm = date.fromisoformat(ctx.q("from", date.today().replace(day=1).isoformat()))
-    to = date.fromisoformat(ctx.q("to", date.today().isoformat()))
+    frm = date.fromisoformat(ctx.q("from", local_today().replace(day=1).isoformat()))
+    to = date.fromisoformat(ctx.q("to", local_today().isoformat()))
     if (to - frm).days > 62:
         raise unprocessable("At most 62 days per request", "RANGE_TOO_LARGE")
     scope_sql, params = ctx.employee_filter("attendance.read")
@@ -255,7 +256,7 @@ def summaries(ctx: Ctx):
 @route("POST", "/api/v1/attendance/recompute", perm="correction.approve")
 def recompute(ctx: Ctx):
     emp_id = ctx.q("employee_id")
-    day = date.fromisoformat(ctx.q("date", date.today().isoformat()))
+    day = date.fromisoformat(ctx.q("date", local_today().isoformat()))
     emp = dbm.one(ctx.conn, "SELECT * FROM employees WHERE id = ? AND tenant_id = ?", (emp_id, ctx.tenant_id))
     if not emp:
         raise not_found("Employee")
@@ -333,6 +334,7 @@ def create_period(ctx: Ctx, body: PeriodIn):
 def period_checklist(ctx: Ctx, period: dict) -> dict:
     t, s = ctx.tenant_id, period["site_id"]
     rng = (period["start_date"], period["end_date"])
+    site_tz = dbm.scalar(ctx.conn, "SELECT timezone FROM sites WHERE id = ?", (s,))
     return {
         "open_anomalies": dbm.scalar(ctx.conn, "SELECT COUNT(*) FROM anomalies a JOIN employees e ON e.id = a.employee_id "
                                                "WHERE a.tenant_id = ? AND e.site_id = ? AND a.status = 'open' AND "
@@ -345,8 +347,8 @@ def period_checklist(ctx: Ctx, period: dict) -> dict:
                                                "'pending' AND l.start_date <= ? AND l.end_date >= ?", (t, s, rng[1], rng[0])),
         "pending_reviews": dbm.scalar(ctx.conn, "SELECT COUNT(*) FROM attendance_events ev LEFT JOIN event_reviews r ON "
                                                 "r.event_id = ev.id WHERE ev.tenant_id = ? AND ev.site_id = ? AND "
-                                                "ev.result = 'review' AND r.id IS NULL AND ev.captured_at BETWEEN ? AND ?",
-                                      (t, s, rng[0], rng[1] + "T23:59:59Z")),
+                                                "ev.result = 'review' AND r.id IS NULL AND ev.captured_at >= ? AND ev.captured_at < ?",
+                                      (t, s, *local_day_bounds(*rng, site_tz))),
         "offline_devices": dbm.scalar(ctx.conn, "SELECT COUNT(*) FROM devices WHERE tenant_id = ? AND site_id = ? AND "
                                                 "status = 'offline'", (t, s)),
     }
@@ -371,7 +373,7 @@ def close_period(ctx: Ctx, body: CloseIn):
     ctx.require_site("period.close", p["site_id"])
     if p["status"] == "closed":
         raise conflict("Period is already closed", "PERIOD_ALREADY_CLOSED")
-    if date.fromisoformat(p["end_date"]) >= date.today():
+    if date.fromisoformat(p["end_date"]) >= local_today():
         raise unprocessable("A period can be closed only after its last day", "PERIOD_NOT_FINISHED")
     cl = period_checklist(ctx, p)
     blocking = {k: v for k, v in cl.items() if v}

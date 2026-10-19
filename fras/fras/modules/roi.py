@@ -16,7 +16,7 @@ from starlette.responses import Response
 from .. import db as dbm
 from ..errors import forbidden
 from ..http import Ctx, route
-from ..util import dumps, iso, loads, new_id, now_iso, utcnow
+from ..util import dumps, iso, loads, local_today, new_id, now_iso, utcnow
 
 DEFAULT_COEFFICIENTS = {"H": 0.20, "K": 0.35, "L": 0.20, "E": 0.30}
 
@@ -140,9 +140,9 @@ def dashboard(ctx: Ctx):
                                  (ctx.tenant_id, since)),
         "overtime_hours_30d": round((dbm.scalar(ctx.conn, "SELECT COALESCE(SUM(overtime_min),0) FROM daily_summaries WHERE "
                                                           "tenant_id = ? AND work_date >= ?",
-                                                (ctx.tenant_id, (date.today() - timedelta(days=30)).isoformat())) or 0) / 60, 1),
+                                                (ctx.tenant_id, (local_today() - timedelta(days=30)).isoformat())) or 0) / 60, 1),
         "late_minutes_30d": dbm.scalar(ctx.conn, "SELECT COALESCE(SUM(late_min),0) FROM daily_summaries WHERE tenant_id = ? "
-                                                 "AND work_date >= ?", (ctx.tenant_id, (date.today() - timedelta(days=30)).isoformat())),
+                                                 "AND work_date >= ?", (ctx.tenant_id, (local_today() - timedelta(days=30)).isoformat())),
     }
     return {"baseline": loads(base["inputs"]) if base else None,
             "estimate": calculate(RoiIn(**loads(base["inputs"]))) if base else None, "measured": measured,

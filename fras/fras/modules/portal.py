@@ -13,7 +13,7 @@ from ..errors import conflict, forbidden, locked, not_found, unprocessable
 from ..http import Ctx, route
 from ..security import tokens
 from ..services import attendance_svc, biometric_svc, notify, report_svc
-from ..util import iso, new_id, now_iso, token, utcnow
+from ..util import iso, local_today, new_id, now_iso, token, utcnow
 from .corrections import CorrectionIn, create_correction
 from .leaves import TYPES, LeaveIn, create_leave, used_vacation_days, ANNUAL_VACATION_DAYS
 
@@ -65,7 +65,7 @@ def _shift_view(ctx: Ctx, emp: dict, d: date) -> dict | None:
 @route("GET", "/api/v1/portal/home", perm="self.read", mfa_exempt=True)
 def home(ctx: Ctx):
     emp = _me(ctx)
-    today = date.today()
+    today = local_today(emp["timezone"])
     s = dbm.one(ctx.conn, "SELECT * FROM daily_summaries WHERE employee_id = ? AND work_date = ?", (emp["id"], today.isoformat()))
     month_start = today.replace(day=1)
     rows = dbm.all_(ctx.conn, "SELECT * FROM daily_summaries WHERE employee_id = ? AND work_date BETWEEN ? AND ?",
@@ -98,7 +98,7 @@ def home(ctx: Ctx):
 @route("GET", "/api/v1/portal/attendance", perm="self.read", mfa_exempt=True)
 def attendance(ctx: Ctx):
     emp = _me(ctx)
-    month = ctx.q("month", date.today().strftime("%Y-%m"))
+    month = ctx.q("month", local_today(emp["timezone"]).strftime("%Y-%m"))
     y, m = map(int, month.split("-"))
     start, end = date(y, m, 1), date(y, m, monthrange(y, m)[1])
     sums = {r["work_date"]: attendance_svc.summary_view(r) for r in dbm.all_(
@@ -115,7 +115,7 @@ def attendance(ctx: Ctx):
     days = []
     for d in (start + timedelta(days=i) for i in range((end - start).days + 1)):
         days.append({"date": d.isoformat(), "summary": sums.get(d.isoformat()),
-                     "can_dispute": d <= date.today() and (date.today() - d).days <= 30 and
+                     "can_dispute": d <= local_today(emp["timezone"]) and (local_today(emp["timezone"]) - d).days <= 30 and
                      not closed(ctx.conn, ctx.tenant_id, emp["site_id"], d),
                      "dispute": next((x["status"] for x in disputes if x["work_date"] == d.isoformat()), None)})
     return {"month": month, "timezone": emp["timezone"], "days": days, "events": events}
@@ -124,7 +124,7 @@ def attendance(ctx: Ctx):
 @route("GET", "/api/v1/portal/schedule", perm="self.read", mfa_exempt=True)
 def schedule(ctx: Ctx):
     emp = _me(ctx)
-    start = date.fromisoformat(ctx.q("from", date.today().isoformat()))
+    start = date.fromisoformat(ctx.q("from", local_today(emp["timezone"]).isoformat()))
     days = []
     for i in range(min(ctx.q("days", 28, int), 62)):
         d = start + timedelta(days=i)
@@ -136,7 +136,7 @@ def schedule(ctx: Ctx):
 @route("GET", "/api/v1/portal/hours", perm="self.read", mfa_exempt=True)
 def hours(ctx: Ctx):
     emp = _me(ctx)
-    year = ctx.q("year", date.today().year, int)
+    year = ctx.q("year", local_today(emp["timezone"]).year, int)
     rows = dbm.all_(ctx.conn, "SELECT substr(work_date, 1, 7) AS month, SUM(worked_min) AS worked_min, SUM(overtime_min) "
                               "AS overtime_min, SUM(CASE WHEN late_min > 0 THEN 1 ELSE 0 END) AS late_count, "
                               "SUM(CASE WHEN worked_min > 0 THEN 1 ELSE 0 END) AS days FROM daily_summaries WHERE "
@@ -149,7 +149,7 @@ def hours(ctx: Ctx):
 @route("GET", "/api/v1/portal/hours.pdf", perm="self.read", mfa_exempt=True)
 def hours_pdf(ctx: Ctx):
     emp = _me(ctx)
-    month = ctx.q("month", date.today().strftime("%Y-%m"))
+    month = ctx.q("month", local_today(emp["timezone"]).strftime("%Y-%m"))
     report = report_svc.run(ctx.conn, ctx.tenant_id, "timesheet", {"month": month}, ("e.id = ?", [emp["id"]]),
                             emp["timezone"])
     data, mime, _ = report_svc.render(report, "pdf", f"{emp['last_name']} {emp['first_name']} · {now_iso()}")
@@ -180,7 +180,7 @@ def request_leave(ctx: Ctx, body: SelfLeaveIn):
 @route("POST", "/api/v1/portal/disputes", perm="self.request", mfa_exempt=True)
 def dispute(ctx: Ctx, body: DisputeIn):
     emp = _me(ctx)
-    if (date.today() - body.work_date).days > 30:
+    if (local_today(emp["timezone"]) - body.work_date).days > 30:
         raise unprocessable("Disputes are possible for the last 30 days; contact HR", "DISPUTE_TOO_OLD")
     if attendance_svc.period_closed(ctx.conn, ctx.tenant_id, emp["site_id"], body.work_date):
         raise locked("This period is closed. Contact HR.", "PERIOD_LOCKED")

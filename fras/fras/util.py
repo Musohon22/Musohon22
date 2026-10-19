@@ -58,6 +58,23 @@ def parse_date(value: str) -> date:
     return date.fromisoformat(value)
 
 
+# Business day boundary. Servers usually run in UTC, but "today" for a factory is its local date
+# (Tashkent is UTC+5, so the dates differ every night between 00:00 and 05:00 local time).
+DEFAULT_TZ = os.environ.get("FRAS_TIMEZONE", "Asia/Tashkent")
+
+
+def local_today(zone: str | None = None) -> date:
+    return datetime.now(ZoneInfo(zone or DEFAULT_TZ)).date()
+
+
+def local_day_bounds(first: str, last: str, zone: str | None = None) -> tuple[str, str]:
+    """UTC [start, end) covering local calendar days first..last (ISO dates) — event timestamps are UTC."""
+    z = ZoneInfo(zone or DEFAULT_TZ)
+    a, b = date.fromisoformat(first[:10]), date.fromisoformat(last[:10]) + timedelta(days=1)
+    to_utc = lambda d: datetime(d.year, d.month, d.day, tzinfo=z).astimezone(timezone.utc)  # noqa: E731
+    return iso(to_utc(a)), iso(to_utc(b))
+
+
 def tz(name: str) -> ZoneInfo:
     return ZoneInfo(name)
 

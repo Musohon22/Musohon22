@@ -8,6 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "edge"))
 
+from fras.util import local_today
 from fras.biometrics.providers import DevProvider  # noqa: E402
 from fras_edge.agent import Agent, SimulatedRelay  # noqa: E402
 from fras_edge.store import Store  # noqa: E402
@@ -57,7 +58,7 @@ class EdgeTests(FrasTestCase):
         self.agent.activate(self.code, "SN-EDGE")
 
     def server_events(self):
-        return self.hr.get("/api/v1/attendance/events", query={"from": date.today().isoformat()}).json()
+        return self.hr.get("/api/v1/attendance/events", query={"from": local_today().isoformat()}).json()
 
     def test_recognize_open_gate_and_sync(self):
         self.assertEqual(len(self.agent.gallery.allowed), 2)
@@ -114,7 +115,7 @@ class EdgeTests(FrasTestCase):
         self.assertEqual(self.agent.card_pin("NOPE", "1")["state"], "TRM-08")
 
     def test_deactivation_reaches_terminal(self):
-        self.hr.post(f"/api/v1/employees/{self.emp['id']}/deactivate", {"effective_date": date.today().isoformat(),
+        self.hr.post(f"/api/v1/employees/{self.emp['id']}/deactivate", {"effective_date": local_today().isoformat(),
                                                                         "reason": "dismissed"})
         self.agent.sync_once()
         res = self.agent.attempt(frames_for(11), "in")

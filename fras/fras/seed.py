@@ -20,7 +20,7 @@ from .db import Database
 from .inproc import Client, DeviceClient
 from .security import crypto, passwords
 from .services import tenancy
-from .util import new_id, now_iso
+from .util import local_today, new_id, now_iso
 
 PASSWORD = "Demo-Parol-2026"
 TZ = ZoneInfo("Asia/Tashkent")
@@ -132,10 +132,10 @@ def seed_demo(settings: Settings, database: Database, employees: int = 60, days:
         for i in range(employees):
             dcode = dept_cycle[i % len(dept_cycle)]
             first = FIRST[i % len(FIRST)]
-            last = LAST[(i * 7) % len(LAST)]
+            last = LAST[(i * 7 + i // len(FIRST)) % len(LAST)]      # a new pairing on every pass through the names
             body = {"personnel_no": f"T-{1001 + i}", "last_name": _female(last) if first in FEMALE else last, "first_name": first,
                     "site_id": site_id, "department_id": depts[dcode], "team": "A" if i % 3 else "B",
-                    "hire_date": (date.today() - timedelta(days=200 + i * 9)).isoformat(),
+                    "hire_date": (local_today() - timedelta(days=200 + i * 9)).isoformat(),
                     "phone": f"+99890{1000000 + i * 37:07d}", "language": "ru" if i % 9 == 0 else "uz"}
             if i % 4 == 0:
                 body.update(card_no=f"{40000 + i}", pin=f"{(1357 + i * 11) % 10000:04d}")
@@ -146,7 +146,7 @@ def seed_demo(settings: Settings, database: Database, employees: int = 60, days:
             emps.append(e)
 
         # schedule: D1 Mon–Sat for production, A1 Mon–Fri for admin; night shift for team B of SEX-2
-        start, end = date.today() - timedelta(days=days), date.today() + timedelta(days=21)
+        start, end = local_today() - timedelta(days=days), local_today() + timedelta(days=21)
         for code, dept, wd in [("D1", "SEX-1", [0, 1, 2, 3, 4, 5]), ("D1", "OMB", [0, 1, 2, 3, 4, 5]), ("A1", "ADM", [0, 1, 2, 3, 4])]:
             _ok(hr.post("/api/v1/shifts/schedule/bulk", {"department_id": depts[dept], "shift_code": code, "start_date": start.isoformat(),
                                                          "end_date": end.isoformat(), "weekdays": wd, "preview": False}))
@@ -192,7 +192,7 @@ def seed_demo(settings: Settings, database: Database, employees: int = 60, days:
                 conn, "SELECT employee_id, work_date, shift_code FROM shift_assignments WHERE tenant_id = ?", (tenant_id,))}
         starts = {"D1": (8 * 60, 17 * 60), "A1": (9 * 60, 18 * 60), "N1": (20 * 60, 32 * 60)}
         batch, seq = [], 0
-        today = date.today()
+        today = local_today()
         now_local = datetime.now(TZ)
 
         def add(emp_id, d, minute, direction, result="accepted", method="face", score=None):

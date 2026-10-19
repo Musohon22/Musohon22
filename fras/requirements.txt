@@ -1,0 +1,12 @@
+# Versions the system was built and tested with (Python 3.13).
+starlette==1.6.0
+uvicorn==0.53.0
+pydantic==2.13.5
+PyJWT==2.14.0
+cryptography==50.0.1
+numpy==2.5.3
+onnxruntime==1.29.0
+Pillow==12.3.0
+XlsxWriter==3.2.9
+reportlab==5.0.1
+openpyxl==3.1.5

@@ -8,6 +8,7 @@ from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 
+from fras.util import local_today
 from fras.biometrics.synthetic import frames_for  # noqa: F401  (used by other test modules too)
 from fras.security import crypto
 from fras.services import billing_svc
@@ -27,7 +28,7 @@ class DeviceFlowTests(FrasTestCase):
         self.make_org()
         self.make_shift("D1", "08:00", "17:00")
         self.emp = self.make_employee("A-1001")
-        self.day = date.today() - timedelta(days=1)
+        self.day = local_today() - timedelta(days=1)
         self.assign(self.emp["id"], self.day, "D1")
         self.dev = self.make_device()
         self.seq = 0
@@ -91,14 +92,14 @@ class DeviceFlowTests(FrasTestCase):
         day = s["days"][self.emp["id"]][self.day.isoformat()]
         self.assertEqual(day["status"], "late")
         self.assertEqual(day["late_min"], 20)
-        sus = self.hr.get("/api/v1/attendance/events", query={"from": date.today().isoformat(),
-                                                              "to": (date.today() + timedelta(days=1)).isoformat(),
+        sus = self.hr.get("/api/v1/attendance/events", query={"from": local_today().isoformat(),
+                                                              "to": (local_today() + timedelta(days=1)).isoformat(),
                                                               "tab": "suspicious"}).json()
         self.assertEqual(sus["total"], 1)
 
     def test_pad_creates_alert_and_unknown_repeat(self):
         self.env.add_user("sec@acme.uz", "security")
-        today = date.today()
+        today = local_today()
         batch = [self.event("09:00", "in", result="pad", day=today, employee=False)]
         batch += [self.event(f"09:0{i}", "in", result="unknown", day=today, employee=False) for i in range(1, 4)]
         self.dev.call("POST", "/api/v1/gateway/events", {"events": batch})
@@ -210,9 +211,10 @@ class DeviceFlowTests(FrasTestCase):
         self.assertEqual(over.json()["error"]["code"], "LEAVE_BALANCE")
 
     def test_dashboard_and_feed(self):
-        today = date.today()
+        now = datetime.now(TZ) - timedelta(minutes=2)      # an arrival that is already in the past, local time
+        today = now.date()
         self.assign(self.emp["id"], today, "D1")
-        self.dev.call("POST", "/api/v1/gateway/events", {"events": [self.event("07:50", "in", day=today)]})
+        self.dev.call("POST", "/api/v1/gateway/events", {"events": [self.event(now.strftime("%H:%M"), "in", day=today)]})
         s = self.hr.get("/api/v1/dashboard/summary").json()
         self.assertEqual(s["kpi"]["arrived"]["value"], 1)
         self.assertEqual(s["kpi"]["in_now"]["value"], 1)
@@ -223,7 +225,7 @@ class DeviceFlowTests(FrasTestCase):
         self.make_shift("N1", "22:00", "06:00", breaks=[{"floating_min": 30, "paid": False}])
         rot = self.hr.post("/api/v1/shifts/rotations", {"name": "2/2", "pattern": ["D1", "D1", "N1", "N1", "OFF", "OFF"]})
         self.assertEqual(rot.status, 201, rot)
-        start = date.today() + timedelta(days=7)
+        start = local_today() + timedelta(days=7)
         pv = self.hr.post(f"/api/v1/shifts/rotations/{rot.json()['id']}/apply",
                           {"department_id": self.dept1, "start_date": start.isoformat(),
                            "end_date": (start + timedelta(days=13)).isoformat(), "preview": True}).json()
@@ -335,7 +337,7 @@ class PortalTests(FrasTestCase):
         self.make_org()
         self.make_shift()
         emp = self.make_employee("A-1001")
-        day = date.today() - timedelta(days=1)
+        day = local_today() - timedelta(days=1)
         self.assign(emp["id"], day, "D1")
         grant = self.hr.post(f"/api/v1/employees/{emp['id']}/portal-access")
         self.assertEqual(grant.status, 201, grant)
@@ -354,8 +356,8 @@ class PortalTests(FrasTestCase):
         self.assertEqual(self.hr.post(f"/api/v1/attendance/corrections/{d.json()['id']}/approve", {}).status, 200)
         notes = me.get("/api/v1/notifications").json()
         self.assertGreater(notes["unread"], 0)
-        lv = me.post("/api/v1/portal/leaves", {"type": "sick", "start_date": date.today().isoformat(),
-                                               "end_date": date.today().isoformat(), "reason": "Kasal"})
+        lv = me.post("/api/v1/portal/leaves", {"type": "sick", "start_date": local_today().isoformat(),
+                                               "end_date": local_today().isoformat(), "reason": "Kasal"})
         self.assertEqual(lv.status, 201, lv)
         self.assertEqual(me.get("/api/v1/portal/hours.pdf").status, 200)
 
@@ -370,7 +372,7 @@ class BillingTests(FrasTestCase):
         dev = self.make_device()
         with self.env.db.tx() as conn:
             sub = billing_svc.current_subscription(conn, self.env.tenant_id)
-            inv = billing_svc.issue_invoice(conn, sub, date.today() - timedelta(days=40), date.today())
+            inv = billing_svc.issue_invoice(conn, sub, local_today() - timedelta(days=40), local_today())
             conn.execute("UPDATE invoices SET due_at = ? WHERE id = ?",
                          ((datetime.now(timezone.utc) - timedelta(days=35)).isoformat(), inv["id"]))
             self.assertEqual(billing_svc.reconcile_status(conn, self.env.tenant_id), "suspended")

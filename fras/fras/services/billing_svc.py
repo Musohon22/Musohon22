@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 from .. import db as dbm
-from ..util import dumps, iso, new_id, now_iso, parse_dt, utcnow
+from ..util import dumps, iso, local_today, new_id, now_iso, parse_dt, utcnow
 from . import notify, tenancy
 
 # days overdue → status (section 6.3)
@@ -44,7 +44,7 @@ def mrr_cents(conn, sub: dict) -> int:
 
 
 def next_invoice_number(conn) -> str:
-    year = date.today().year
+    year = local_today().year
     n = dbm.scalar(conn, "SELECT COUNT(*) FROM invoices WHERE number LIKE ?", (f"FRAS-{year}-%",)) + 1
     return f"FRAS-{year}-{n:05d}"
 
@@ -133,7 +133,7 @@ def reconcile_status(conn, tenant_id: str) -> str:
 
 
 def run_billing(conn, today: date | None = None) -> dict:
-    today = today or date.today()
+    today = today or local_today()
     issued = 0
     for sub in dbm.all_(conn, "SELECT s.* FROM subscriptions s WHERE s.created_at = (SELECT MAX(created_at) FROM "
                               "subscriptions x WHERE x.tenant_id = s.tenant_id) AND s.status NOT IN ('cancelled','archived')"):

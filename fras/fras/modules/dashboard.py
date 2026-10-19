@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from .. import db as dbm
 from ..http import Ctx, route
-from ..util import iso, parse_dt, utcnow
+from ..util import iso, local_today, parse_dt, utcnow
 
 
 def _employee_scope(ctx: Ctx) -> tuple[str, list]:
@@ -29,7 +29,7 @@ def _employee_scope(ctx: Ctx) -> tuple[str, list]:
 
 @route("GET", "/api/v1/dashboard/summary", perm="attendance.read")
 def summary(ctx: Ctx):
-    day = ctx.q("date", date.today().isoformat())
+    day = ctx.q("date", local_today().isoformat())
     where, p = _employee_scope(ctx)
     shift_codes = ctx.qlist("shift_code")
     shift_filter = ""
@@ -44,7 +44,7 @@ def summary(ctx: Ctx):
     absent = sum(1 for r in rows if r["status"] == "absent")
     leave = sum(1 for r in rows if r["status"] == "leave")
     in_now = 0
-    if day == date.today().isoformat():
+    if day == local_today().isoformat():
         scope_ids = [r["id"] for r in rows]
         if scope_ids:
             since = iso(utcnow() - timedelta(hours=20))
@@ -77,7 +77,7 @@ def summary(ctx: Ctx):
 
 @route("GET", "/api/v1/dashboard/arrivals", perm="attendance.read")
 def arrivals(ctx: Ctx):
-    day = date.fromisoformat(ctx.q("date", date.today().isoformat()))
+    day = date.fromisoformat(ctx.q("date", local_today().isoformat()))
     where, p = _employee_scope(ctx)
     site_tz = "Asia/Tashkent"
     sites = ctx.qlist("site_id")
@@ -99,7 +99,7 @@ def arrivals(ctx: Ctx):
 
 @route("GET", "/api/v1/dashboard/departments", perm="attendance.read")
 def departments(ctx: Ctx):
-    day = ctx.q("date", date.today().isoformat())
+    day = ctx.q("date", local_today().isoformat())
     where, p = _employee_scope(ctx)
     rows = dbm.all_(ctx.conn, f"SELECT d.id, d.name, COUNT(e.id) AS employees, "
                               f"SUM(CASE WHEN s.shift_code IS NOT NULL THEN 1 ELSE 0 END) AS expected, "

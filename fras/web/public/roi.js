@@ -5,7 +5,7 @@ import { h, clear, btn, field, input, toast, errorText, form, kv } from '/assets
 
 const api = createApi({ realm: 'public' });
 const root = document.getElementById('root');
-const usd = (v) => (v === null || v === undefined ? '—' : `$${Number(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`);
+const usd = (v) => (v === null || v === undefined ? '—' : `${v < 0 ? '−' : ''}$${Math.abs(Number(v)).toLocaleString('en-US', { maximumFractionDigits: 0 })}`);
 
 const f = form([
   { name: 'employees', label: 'Xodimlar soni', type: 'number', required: true, min: 10, help: 'Davomat yuritiladigan faol xodimlar' },

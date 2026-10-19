@@ -21,7 +21,7 @@ export function fmtDuration(min) {
 }
 export function fmtHours(min) { return min ? (min / 60).toFixed(1) : '0'; }
 export function fmtNumber(n) { return n === null || n === undefined ? '—' : new Intl.NumberFormat('ru-RU').format(n); }
-export function fmtMoney(cents, cur = 'USD') { return `${cur === 'USD' ? '$' : ''}${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
+export function fmtMoney(cents, cur = 'USD') { return `${cents < 0 ? '−' : ''}${cur === 'USD' ? '$' : ''}${(Math.abs(cents) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
 export function relTime(v) {
   if (!v) return '—';
   const s = Math.round((Date.now() - new Date(v).getTime()) / 1000);
@@ -35,6 +35,9 @@ export function todayISO(tz = DEFAULT_TZ) {
 }
 export function addDays(iso, n) { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
 export function monthISO(iso) { return iso.slice(0, 7); }
+// Browsers ship incomplete Uzbek locale data, so month names are spelled out here.
+export const MONTHS = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
+export function fmtMonth(ym) { const [y, m] = ym.split('-').map(Number); return `${MONTHS[m - 1]} ${y}`; }
 export function daysBetween(a, b) { const out = []; for (let d = a; d <= b; d = addDays(d, 1)) out.push(d); return out; }
 export function weekday(iso) { return new Date(iso + 'T12:00:00Z').getUTCDay(); }
 export const WEEKDAYS = ['Ya', 'Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh'];

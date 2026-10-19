@@ -13,7 +13,7 @@ from ..errors import bad_request, conflict, not_found, unprocessable
 from ..http import Ctx, page_params, paged, route
 from ..security import crypto, passwords
 from ..services import gallery, notify, tenancy
-from ..util import dumps, loads, new_id, now_iso
+from ..util import dumps, loads, local_today, new_id, now_iso
 
 NAME_RE = r"^[A-Za-zА-Яа-яЁёЎўҚқҒғҲҳʻʼ'`\- ]+$"
 
@@ -46,7 +46,7 @@ class EmployeeIn(BaseModel):
     def age(cls, v):
         if v is None:
             return v
-        today = date.today()
+        today = local_today()
         years = (today - v).days / 365.25
         if v > today or not 14 <= years <= 80:
             raise ValueError("age must be between 14 and 80")
@@ -55,7 +55,7 @@ class EmployeeIn(BaseModel):
     @field_validator("hire_date")
     @classmethod
     def hire(cls, v):
-        if v > date.today() + timedelta(days=60):
+        if v > local_today() + timedelta(days=60):
             raise ValueError("hire date can be at most 60 days ahead")
         return v
 
@@ -327,7 +327,7 @@ def patch(ctx: Ctx, body: EmployeePatch):
     if dept_changed or "position_id" in data or "team" in data:
         _check_refs(ctx, emp["site_id"], data.get("department_id", emp["department_id"]),
                     data.get("position_id", emp["position_id"]))
-        today = date.today().isoformat()
+        today = local_today().isoformat()
         ctx.conn.execute("UPDATE employment_assignments SET valid_to = ? WHERE employee_id = ? AND valid_to IS NULL",
                          (today, emp["id"]))
         dbm.insert(ctx.conn, "employment_assignments", {
@@ -354,7 +354,7 @@ def deactivate_employee(ctx: Ctx, emp: dict, effective: date, reason: str, comme
     if open_corr:
         raise conflict("Employee has pending corrections; resolve them first", "PENDING_CORRECTIONS",
                        corrections=open_corr)
-    if effective > date.today() + timedelta(days=90):
+    if effective > local_today() + timedelta(days=90):
         raise unprocessable("Effective date must be within 90 days", "DATE_TOO_FAR")
     data = {"status": "deactivated", "deactivated_at": effective.isoformat(),
             "deactivation_reason": f"{reason}: {comment or ''}".strip(": "), "version": emp["version"] + 1,
@@ -404,7 +404,7 @@ def bulk(ctx: Ctx, body: BulkIn):
             if not body.department_id:
                 raise unprocessable("department_id is required", "DEPARTMENT_REQUIRED")
             _check_refs(ctx, emp["site_id"], body.department_id, emp["position_id"])
-            today = date.today().isoformat()
+            today = local_today().isoformat()
             ctx.conn.execute("UPDATE employment_assignments SET valid_to = ? WHERE employee_id = ? AND valid_to IS NULL",
                              (today, emp["id"]))
             dbm.insert(ctx.conn, "employment_assignments", {
@@ -421,7 +421,7 @@ def bulk(ctx: Ctx, body: BulkIn):
                 skipped.append({"id": emp_id, "reason": "already_deactivated"})
                 continue
             try:
-                deactivate_employee(ctx, emp, date.today(), body.reason or "other", "bulk")
+                deactivate_employee(ctx, emp, local_today(), body.reason or "other", "bulk")
             except Exception as e:  # noqa: BLE001
                 skipped.append({"id": emp_id, "reason": getattr(e, "code", "error")})
                 continue
@@ -519,7 +519,7 @@ def import_preview(ctx: Ctx, form: dict):
             "pinfl": raw.get("pinfl") or None, "birth_date": raw.get("birth_date") or None,
             "phone": raw.get("phone") or None, "site_id": site["id"] if site else "-",
             "department_id": dept["id"] if dept else "-", "position_id": pos["id"] if pos else None,
-            "team": raw.get("team") or None, "hire_date": raw.get("hire_date") or date.today().isoformat(),
+            "team": raw.get("team") or None, "hire_date": raw.get("hire_date") or local_today().isoformat(),
             "card_no": raw.get("card_no") or None, "language": raw.get("language") or "uz",
         }
         try:
@@ -626,7 +626,7 @@ def merge(ctx: Ctx, body: MergeIn):
         dbm.update(ctx.conn, "employees", {"id": primary["id"]}, fill)
     # Raw events stay attached to the original record (append-only); the secondary record is closed.
     dbm.update(ctx.conn, "employees", {"id": secondary["id"]},
-               {"status": "deactivated", "deactivated_at": date.today().isoformat(),
+               {"status": "deactivated", "deactivated_at": local_today().isoformat(),
                 "deactivation_reason": f"merged into {primary['personnel_no']}: {body.comment}",
                 "version": secondary["version"] + 1, "updated_at": now_iso()})
     dbm.update(ctx.conn, "duplicate_candidates", {"id": dc["id"]},

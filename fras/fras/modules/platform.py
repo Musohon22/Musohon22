@@ -10,7 +10,7 @@ from .. import db as dbm
 from ..errors import conflict, forbidden, not_found, unprocessable
 from ..http import Ctx, invalidate_subscription_cache, route
 from ..services import billing_svc, tenancy
-from ..util import dumps, iso, loads, now_iso, utcnow
+from ..util import dumps, iso, loads, local_today, now_iso, utcnow
 
 
 class TenantIn(BaseModel):
@@ -70,7 +70,7 @@ def dashboard(ctx: Ctx):
     subs = dbm.all_(ctx.conn, "SELECT s.* FROM subscriptions s WHERE s.created_at = (SELECT MAX(created_at) FROM "
                               "subscriptions x WHERE x.tenant_id = s.tenant_id)")
     mrr = {s["tenant_id"]: billing_svc.mrr_cents(ctx.conn, s) for s in subs}
-    month_start = date.today().replace(day=1).isoformat()
+    month_start = local_today().replace(day=1).isoformat()
     new_tenants = {t["id"] for t in dbm.all_(ctx.conn, "SELECT id FROM tenants WHERE created_at >= ?", (month_start,))}
     churned = dbm.all_(ctx.conn, "SELECT tenant_id FROM subscriptions WHERE status IN ('cancelled','archived') AND "
                                  "updated_at >= ?", (month_start,))

@@ -11,7 +11,7 @@ from .. import db as dbm
 from ..errors import conflict, forbidden, locked, not_found, unprocessable
 from ..http import Ctx, page_params, paged, route
 from ..services import attendance_svc, notify, settings_svc
-from ..util import iso, new_id, now_iso, parse_dt
+from ..util import iso, local_today, new_id, now_iso, parse_dt
 
 REASONS = ("device_failure", "card_forgotten", "business_task", "missed_checkout", "other")
 
@@ -68,7 +68,7 @@ def create_correction(ctx: Ctx, body: CorrectionIn, source: str = "hr") -> dict:
         raise not_found("Employee")
     if source == "hr":
         ctx.require_employee("correction.request", emp)
-    if body.work_date > date.today():
+    if body.work_date > local_today():
         raise unprocessable("Cannot correct a future day", "FUTURE_DATE")
     if attendance_svc.period_closed(ctx.conn, ctx.tenant_id, emp["site_id"], body.work_date):
         raise locked("This day belongs to a closed period. Ask HR Manager to reopen it.", "PERIOD_LOCKED")

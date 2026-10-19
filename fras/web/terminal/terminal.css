@@ -4,6 +4,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); overflow: hidden;
   -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+[hidden] { display: none !important; }
 button { font: inherit; }
 .kiosk { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr auto; }
 

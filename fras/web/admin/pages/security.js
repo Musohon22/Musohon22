@@ -83,7 +83,7 @@ export async function renderRoles(main, params, app) {
     return [h('div', { class: 'table-wrap', style: { maxHeight: '70vh' } }, h('table', { class: 'data dense' },
       h('thead', {}, h('tr', {}, h('th', {}, 'Ruxsat'), r.items.map((role) => h('th', { title: role.code }, role.name, role.mfa_required ? ' 🔐' : '', h('div', { class: 'caption' }, `${role.users} foyd.`))))),
       h('tbody', {}, modules.flatMap((mod) => [h('tr', {}, h('td', { colspan: r.items.length + 1, style: { background: 'var(--n-50)', fontWeight: 600 } }, mod)),
-        ...perms.filter((p) => p.startsWith(`${mod}.`)).map((p) => h('tr', {}, h('td', { title: p }, r.permissions[p]), r.items.map((role) => h('td', { style: { textAlign: 'center' } }, role.permissions.includes(p) ? h('span', { style: { color: 'var(--c-success)' }, 'aria-label': 'bor' }, '✓') : h('span', { class: 'muted', 'aria-label': "yo'q" }, '·')))))]))),
+        ...perms.filter((p) => p.startsWith(`${mod}.`)).map((p) => h('tr', {}, h('td', { title: p }, r.permissions[p]), r.items.map((role) => h('td', { style: { textAlign: 'center' } }, role.permissions.includes(p) ? h('span', { style: { color: 'var(--c-success)' }, 'aria-label': 'bor' }, '✓') : h('span', { class: 'muted', 'aria-label': "yo'q" }, '·')))))])))),
     app.can('role.manage') ? h('div', { class: 'btn-bar', style: { marginTop: '12px' } }, btn('Maxsus rol yaratish', { onClick: () => customRole(r) })) : null];
   });
   function customRole(r) {

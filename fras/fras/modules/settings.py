@@ -11,7 +11,7 @@ from ..engine.attendance import Correction, Event, compute_day
 from ..errors import forbidden, not_found, unprocessable
 from ..http import Ctx, route
 from ..services import attendance_svc, settings_svc
-from ..util import daterange, parse_dt
+from ..util import daterange, local_today, parse_dt
 
 PERM_BY_KEY = {
     "attendance_rules": "settings.attendance_rules",
@@ -116,7 +116,7 @@ def simulate(ctx: Ctx, body: SimulateIn):
     proposed = _validate("attendance_rules", body.value)
     current = settings_svc.get(ctx.conn, ctx.tenant_id, "attendance_rules")
     days = max(1, min(body.days, 62))
-    end = date.today() - timedelta(days=1)
+    end = local_today() - timedelta(days=1)
     start = end - timedelta(days=days - 1)
     totals = {"current": {"late": 0, "overtime_min": 0, "worked_min": 0, "incomplete": 0},
               "proposed": {"late": 0, "overtime_min": 0, "worked_min": 0, "incomplete": 0}}

@@ -8,7 +8,7 @@ from calendar import monthrange
 from datetime import date, timedelta
 
 from .. import db as dbm
-from ..util import daterange, parse_dt
+from ..util import daterange, local_day_bounds, local_today, parse_dt
 
 STATUS_CODE = {"present": "", "late": "K", "absent": "Y", "leave": "T", "off": "D", "holiday": "B",
                "incomplete": "?", "scheduled": "", "business_trip": "XS", "remote": "M"}
@@ -70,7 +70,7 @@ def run(conn, tenant_id: str, rtype: str, params: dict, scope: tuple[str, list],
     zone = ZoneInfo(tz)
     loc = lambda v: parse_dt(v).astimezone(zone).strftime("%H:%M") if v else ""  # noqa: E731
     if rtype == "daily":
-        day = params.get("date") or date.today().isoformat()
+        day = params.get("date") or local_today().isoformat()
         emps = _emp_rows(conn, tenant_id, scope, params)
         sums = _summaries(conn, tenant_id, [e["id"] for e in emps], day, day)
         cols = ["Tabel №", "F.I.Sh.", "Bo'lim", "Smena", "Kirish", "Chiqish", "Ishlangan", "Kechikish (daq)", "Holat"]
@@ -82,7 +82,7 @@ def run(conn, tenant_id: str, rtype: str, params: dict, scope: tuple[str, list],
                          _h(s["worked_min"]) if s else "", s["late_min"] if s else 0, s["status"] if s else "—"])
         return {"title": f"Kunlik davomat — {day}", "columns": cols, "rows": rows}
     if rtype == "timesheet":
-        month = params.get("month") or date.today().strftime("%Y-%m")
+        month = params.get("month") or local_today().strftime("%Y-%m")
         y, m = map(int, month.split("-"))
         start, end = date(y, m, 1), date(y, m, monthrange(y, m)[1])
         emps = _emp_rows(conn, tenant_id, scope, params, include_inactive_since=start.isoformat())
@@ -112,8 +112,8 @@ def run(conn, tenant_id: str, rtype: str, params: dict, scope: tuple[str, list],
             rows.append(row)
         return {"title": f"Oylik tabel — {month}", "columns": cols, "rows": rows,
                 "legend": "K — kechikdi, Y — kelmadi, T — ta'til, D — dam olish, B — bayram, ? — anomaliya"}
-    start = params.get("from") or (date.today() - timedelta(days=30)).isoformat()
-    end = params.get("to") or date.today().isoformat()
+    start = params.get("from") or (local_today() - timedelta(days=30)).isoformat()
+    end = params.get("to") or local_today().isoformat()
     if rtype in ("lateness", "hours", "absences", "payroll", "departments"):
         emps = _emp_rows(conn, tenant_id, scope, params, include_inactive_since=start)
         sums = _summaries(conn, tenant_id, [e["id"] for e in emps], start, end)
@@ -198,10 +198,10 @@ def run(conn, tenant_id: str, rtype: str, params: dict, scope: tuple[str, list],
     if rtype == "devices":
         rows = dbm.all_(conn, "SELECT d.name, d.type, d.status, d.firmware, d.last_seen_at, "
                               "(SELECT COUNT(*) FROM attendance_events ev WHERE ev.device_id = d.id AND ev.captured_at "
-                              "BETWEEN ? AND ?) AS events, (SELECT COUNT(*) FROM attendance_events ev WHERE ev.device_id = "
-                              "d.id AND ev.late_arrival = 1 AND ev.captured_at BETWEEN ? AND ?) AS offline_events "
+                              ">= ? AND ev.captured_at < ?) AS events, (SELECT COUNT(*) FROM attendance_events ev WHERE ev.device_id = "
+                              "d.id AND ev.late_arrival = 1 AND ev.captured_at >= ? AND ev.captured_at < ?) AS offline_events "
                               "FROM devices d WHERE d.tenant_id = ? ORDER BY d.name",
-                        (start, end + "T23:59:59Z", start, end + "T23:59:59Z", tenant_id))
+                        (*local_day_bounds(start, end, tz), *local_day_bounds(start, end, tz), tenant_id))
         return {"title": f"Qurilmalar {start} — {end}",
                 "columns": ["Qurilma", "Turi", "Holat", "Firmware", "Oxirgi aloqa", "Hodisalar", "Offline'dan kelgan"],
                 "rows": [list(r.values()) for r in rows]}
@@ -210,8 +210,8 @@ def run(conn, tenant_id: str, rtype: str, params: dict, scope: tuple[str, list],
                               "r.decision FROM attendance_events ev LEFT JOIN devices d ON d.id = ev.device_id LEFT JOIN "
                               "access_points ap ON ap.id = ev.access_point_id LEFT JOIN event_reviews r ON r.event_id = "
                               "ev.id WHERE ev.tenant_id = ? AND ev.result IN ('pad','unknown','review') AND "
-                              "ev.captured_at BETWEEN ? AND ? ORDER BY ev.captured_at DESC",
-                        (tenant_id, start, end + "T23:59:59Z"))
+                              "ev.captured_at >= ? AND ev.captured_at < ? ORDER BY ev.captured_at DESC",
+                        (tenant_id, *local_day_bounds(start, end, tz)))
         return {"title": f"Shubhali urinishlar {start} — {end}",
                 "columns": ["Vaqt (UTC)", "Natija", "Usul", "Qurilma", "Darvoza", "Qaror"],
                 "rows": [list(r.values()) for r in rows]}

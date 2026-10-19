@@ -10,7 +10,7 @@ from .. import db as dbm
 from ..errors import conflict, forbidden, not_found, unprocessable
 from ..http import Ctx, page_params, paged, route
 from ..services import attendance_svc, notify
-from ..util import daterange, new_id, now_iso
+from ..util import daterange, local_today, new_id, now_iso
 
 TYPES = {"vacation": "Mehnat ta'tili", "sick": "Kasallik varaqasi", "business_trip": "Xizmat safari",
          "unpaid": "O'z hisobidan ta'til", "permission": "Soatbay ruxsat"}
@@ -139,7 +139,7 @@ def _pending(ctx: Ctx) -> tuple[dict, dict]:
 
 
 def _recompute_range(ctx: Ctx, lv: dict) -> None:
-    for d in daterange(date.fromisoformat(lv["start_date"]), min(date.fromisoformat(lv["end_date"]), date.today())):
+    for d in daterange(date.fromisoformat(lv["start_date"]), min(date.fromisoformat(lv["end_date"]), local_today())):
         attendance_svc.recompute(ctx.conn, ctx.tenant_id, lv["employee_id"], d)
 
 
@@ -188,7 +188,7 @@ def balance(ctx: Ctx):
     if not emp:
         raise not_found("Employee")
     ctx.require_employee("attendance.read", emp)
-    year = ctx.q("year", date.today().year, int)
+    year = ctx.q("year", local_today().year, int)
     used = used_vacation_days(ctx.conn, ctx.tenant_id, emp["id"], year)
     return {"year": year, "entitled": ANNUAL_VACATION_DAYS, "used_or_pending": used,
             "remaining": ANNUAL_VACATION_DAYS - used}
