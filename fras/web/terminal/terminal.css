@@ -1,0 +1,58 @@
+/* Terminal kiosk (spec H.2): large type, high contrast, readable at 1–1.5 m, no hover-dependent controls. */
+:root { --bg: #0B1220; --panel: #121B2E; --text: #F5F7FA; --muted: #9AA7BD; --ok: #1FA463; --warn: #E89B1A; --bad: #E5484D; --info: #3B82F6;
+  --font: "Inter", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); overflow: hidden;
+  -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+button { font: inherit; }
+.kiosk { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr auto; }
+
+.k-top { display: flex; align-items: center; gap: 16px; padding: 14px 24px; font-size: 20px; }
+.k-top .site { font-weight: 600; }
+.k-top .spacer { flex: 1; }
+.k-top .clock { font-variant-numeric: tabular-nums; font-size: 28px; font-weight: 600; }
+.k-pill { padding: 4px 12px; border-radius: 999px; font-size: 15px; background: var(--panel); color: var(--muted); }
+.k-pill.off { background: #4A2A0A; color: #FFD08A; }
+.k-pill.dev { background: #3A1F5C; color: #D9C2FF; }
+.k-pill.demo { background: #0E3A5C; color: #A8D8FF; }
+
+.k-stage { position: relative; display: grid; place-items: center; overflow: hidden; }
+.k-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); opacity: .9; }
+.k-frame { position: relative; width: min(56vh, 70vw); aspect-ratio: 3 / 4; border-radius: 48% / 40%; border: 6px solid rgba(255,255,255,.55);
+  box-shadow: 0 0 0 200vmax rgba(11,18,32,.55); transition: border-color .2s; }
+.k-frame.scan { border-color: var(--info); animation: pulse 1s infinite; }
+.k-frame.ok { border-color: var(--ok); } .k-frame.warn { border-color: var(--warn); } .k-frame.bad { border-color: var(--bad); }
+@keyframes pulse { 50% { border-color: rgba(59,130,246,.35); } }
+.k-hint { position: absolute; bottom: 7%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.6); padding: 12px 28px; border-radius: 16px;
+  font-size: clamp(22px, 3.2vh, 34px); text-align: center; max-width: 90%; }
+
+.k-result { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 40px; z-index: 5; }
+.k-result.ok { background: rgba(14,80,50,.94); } .k-result.warn { background: rgba(110,70,5,.95); } .k-result.bad { background: rgba(120,20,25,.95); }
+.k-result.info { background: rgba(14,40,90,.95); }
+.k-result .icon { font-size: clamp(80px, 14vh, 160px); line-height: 1; }
+.k-result .msg { font-size: clamp(30px, 5vh, 56px); font-weight: 700; margin-top: 16px; }
+.k-result .sub { font-size: clamp(20px, 3vh, 32px); color: rgba(255,255,255,.85); margin-top: 12px; }
+.k-result .code { position: absolute; bottom: 16px; right: 24px; font-size: 14px; color: rgba(255,255,255,.6); }
+
+.k-bottom { display: flex; gap: 16px; justify-content: center; padding: 16px 24px 24px; flex-wrap: wrap; }
+.k-btn { min-width: 220px; min-height: 72px; border-radius: 16px; border: 0; background: var(--panel); color: var(--text); font-size: 24px; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center; gap: 12px; padding: 0 28px; cursor: pointer; }
+.k-btn:active { transform: scale(.98); }
+.k-btn.primary { background: var(--info); }
+.k-btn.sel { outline: 4px solid var(--info); }
+.k-btn:focus-visible { outline: 4px solid #fff; }
+
+.k-pad { position: absolute; inset: 0; z-index: 6; background: rgba(11,18,32,.97); display: grid; place-items: center; }
+.k-pad .box { width: min(520px, 92vw); display: flex; flex-direction: column; gap: 16px; }
+.k-pad h2 { font-size: 32px; margin: 0; text-align: center; }
+.k-pad .disp { background: var(--panel); border-radius: 12px; height: 72px; font-size: 36px; display: grid; place-items: center; letter-spacing: 8px; font-variant-numeric: tabular-nums; }
+.k-pad .err { color: #FFB4B4; text-align: center; font-size: 20px; min-height: 24px; }
+.k-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.k-keys button { height: 80px; border-radius: 14px; border: 0; background: var(--panel); color: var(--text); font-size: 32px; cursor: pointer; }
+.k-keys button.alt { font-size: 20px; }
+
+.k-full { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 40px; }
+.k-full .big { font-size: clamp(30px, 5vh, 52px); font-weight: 700; }
+.k-full .sub { font-size: 22px; color: var(--muted); margin-top: 12px; max-width: 900px; }
+.k-banner { background: #0E3A5C; color: #D6ECFF; text-align: center; padding: 8px; font-size: 16px; }
+@media (orientation: portrait) { .k-frame { width: min(70vw, 52vh); } }

@@ -105,6 +105,8 @@ class EdgeTests(FrasTestCase):
         self.assertGreaterEqual(stats["duplicates"] + stats["uploaded"], 2)
 
     def test_card_pin_and_lockout(self):
+        first = self.agent.card_pin("CARD-1", None)                                    # card tapped, PIN not yet typed
+        self.assertEqual((first["state"], first.get("need_pin"), first.get("pin_error")), ("TRM-12", True, None))
         self.assertEqual(self.agent.card_pin("CARD-1", "0000")["state"], "TRM-12")
         self.agent.card_pin("CARD-1", "0001")
         self.agent.card_pin("CARD-1", "0002")

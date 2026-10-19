@@ -290,6 +290,8 @@ class Agent:
         fails = self.store.get(f"pin_fail:{card_no}", {"n": 0, "until": 0})
         if fails["until"] > self.clock():
             return self._ui("TRM-10", "T-212", direction=direction, extra={"locked": True})
+        if pin_hash and pin is None:
+            return self._ui("TRM-12", None, direction=direction, extra={"need_pin": True})
         if pin_hash and not passwords.verify_secret(pin or "", pin_hash):
             fails["n"] += 1
             if fails["n"] >= 3:

@@ -222,6 +222,7 @@ def me(ctx: Ctx):
         "roles": [{"code": r["role_code"], "name": SYSTEM_ROLES.get(r["role_code"], {}).get("name", r["role_code"]),
                    "scope_type": r["scope_type"], "scope_id": r["scope_id"]} for r in ctx.p.roles],
         "mfa_required": ctx.p.mfa_required,
+        "mfa_relaxed": ctx.settings.relax_mfa,
         "sites": sites,
         "permission_labels": ALL_PERMISSIONS,
     }
@@ -310,6 +311,13 @@ def platform_login(ctx: Ctx, body: PlatformLoginIn):
 @route("POST", "/api/v1/platform/auth/refresh", auth="public", rate="login")
 def platform_refresh(ctx: Ctx):
     return _rotate(ctx, PLATFORM_REFRESH_COOKIE, "platform")
+
+
+@route("POST", "/api/v1/platform/auth/logout", auth="platform")
+def platform_logout(ctx: Ctx):
+    ctx.conn.execute("UPDATE sessions SET revoked_at = ? WHERE id = ?", (now_iso(), ctx.p.session_id))
+    ctx.cookies.append({"key": PLATFORM_REFRESH_COOKIE, "value": "", "path": "/api/v1/platform/auth", "max_age": 0})
+    return {"ok": True}
 
 
 @route("GET", "/api/v1/platform/me", auth="platform")

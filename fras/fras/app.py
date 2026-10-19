@@ -116,6 +116,7 @@ def create_app(settings: Settings | None = None, *, run_jobs: bool = True) -> St
         routes.append(Mount(f"/{ui}/static", StaticFiles(directory=str(web_dir / folder), check_dir=False)))
         routes.append(Route(f"/{ui}", _spa(web_dir, folder)))
         routes.append(Route(f"/{ui}/{{rest:path}}", _spa(web_dir, folder)))
+    routes.append(Mount("/roi/static", StaticFiles(directory=str(web_dir / "public"), check_dir=False)))
     routes.append(Route("/roi", _spa(web_dir, "public")))
     routes.append(Route("/api/{rest:path}", not_found_api, methods=["GET", "POST", "PUT", "PATCH", "DELETE"]))
 

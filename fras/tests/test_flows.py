@@ -1,37 +1,19 @@
 """End-to-end API flows: devices → events → summaries → corrections → periods → reports; biometrics; billing."""
 
 import base64
-import io
 import json
 import time
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-import numpy as np
-from PIL import Image, ImageFilter
 
+from fras.biometrics.synthetic import frames_for  # noqa: F401  (used by other test modules too)
 from fras.security import crypto
 from fras.services import billing_svc
 from tests.helpers import Client, FrasTestCase
 
 TZ = ZoneInfo("Asia/Tashkent")
-
-
-def frames_for(seed: int, n: int = 3, still: bool = False) -> list[str]:
-    rng = np.random.default_rng(seed)
-    base = Image.fromarray((rng.random((520, 680)) * 255).astype("uint8")).filter(ImageFilter.GaussianBlur(3))
-    arr = np.asarray(base).astype(np.float32)
-    arr = (arr - arr.mean()) / arr.std() * 40 + 135
-    out = []
-    for i in range(n):
-        shift = 0 if still else i
-        a = np.roll(arr, (shift * 2, shift * 3), axis=(0, 1))[20:500, 20:660]
-        img = Image.fromarray(np.stack([a, a, a], -1).clip(0, 255).astype("uint8"))
-        buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=92)
-        out.append("data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode())
-    return out
 
 
 def local(d: date, hm: str) -> str:
