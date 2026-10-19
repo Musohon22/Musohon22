@@ -604,7 +604,7 @@ def duplicates(ctx: Ctx):
                               "JOIN employees a ON a.id = dc.employee_a JOIN employees b ON b.id = dc.employee_b "
                               "WHERE dc.tenant_id = ? AND dc.status = 'open' ORDER BY dc.created_at DESC",
                     (ctx.tenant_id,))
-    if not ctx.can("biometric.review"):
+    if not (ctx.can("biometric.review") or ctx.can("biometric.read")):
         rows = [r for r in rows if r["reason"] != "face"]
     return {"items": rows}
 

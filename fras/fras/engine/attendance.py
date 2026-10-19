@@ -233,7 +233,7 @@ def compute_day(*, work_date: date, zone: str, shift: Shift | None, holiday: boo
             for br in shift.breaks:
                 if br.get("paid"):
                     continue
-                if "floating_min" in br:
+                if br.get("floating_min"):
                     if regular >= br["floating_min"] * 2:
                         break_min += br["floating_min"]
                 else:

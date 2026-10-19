@@ -194,8 +194,14 @@ def _motion_liveness(frames: list[np.ndarray], faces: list[Face]) -> float:
     diffs = [float(np.abs(crops[i] - crops[i - 1]).mean()) for i in range(1, len(crops))]
     motion = float(np.mean(diffs))
     texture = float(np.mean([imaging.laplacian_var(c) for c in crops]))
-    # motion between ~1.5 and ~25 grey levels and some texture look live
-    m_score = 1.0 if 1.5 <= motion <= 25 else max(0.0, 1 - abs(motion - 10) / 30)
+    # motion between ~1.5 and ~25 grey levels and some texture look live; a frozen image (photo held
+    # perfectly still, replayed still frame) scores low, and so does violent change (frame swapping)
+    if motion < 1.5:
+        m_score = 0.3 * motion / 1.5
+    elif motion <= 25:
+        m_score = 1.0
+    else:
+        m_score = max(0.0, 1 - (motion - 25) / 25)
     t_score = min(1.0, texture / 60.0)
     return round(0.7 * m_score + 0.3 * t_score, 3)
 
