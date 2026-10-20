@@ -44,6 +44,14 @@ python -m fras_edge --server http://localhost:8000 activate --code <KOD>
 python -m fras_edge --server http://localhost:8000 run --port 8100   # kiosk: http://127.0.0.1:8100/
 ```
 
+### Windows
+
+Python 3.13 (python.org, «Add python.exe to PATH» belgilansin) o'rnatilgach, `fras` papkasida:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start-demo.ps1
+```
+
 ## Testlar
 
 ```bash

@@ -70,7 +70,7 @@ class Database:
             for file in sorted(MIGRATIONS_DIR.glob("*.sql")):
                 if file.name in done:
                     continue
-                conn.executescript("BEGIN;\n" + file.read_text() + "\nCOMMIT;")
+                conn.executescript("BEGIN;\n" + file.read_text(encoding="utf-8") + "\nCOMMIT;")
                 conn.execute(
                     "INSERT INTO schema_migrations(name, applied_at) VALUES (?, datetime('now'))", (file.name,)
                 )

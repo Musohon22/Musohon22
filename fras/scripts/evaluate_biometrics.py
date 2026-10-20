@@ -215,9 +215,10 @@ def main(argv=None):
     a.out.with_suffix(".json").write_text(json.dumps({"provider": a.provider, "summary": s,
                                                       **{k: v for k, v in r.items() if k not in ("genuine", "impostor_closed", "impostor_open")},
                                                       "scores": {"genuine": r["genuine"], "impostor_closed": r["impostor_closed"],
-                                                                 "impostor_open": r["impostor_open"]}}, indent=1))
+                                                                 "impostor_open": r["impostor_open"]}}, indent=1), encoding="utf-8")
     md = markdown(r, s, a.provider)
-    a.out.with_suffix(".md").write_text(md)
+    a.out.with_suffix(".md").write_text(md, encoding="utf-8")
+    sys.stdout.reconfigure(errors="replace")   # Windows consoles may not have ≤/≈
     print(md)
 
 

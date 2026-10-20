@@ -79,8 +79,8 @@ def _dev_secret(data_dir: str, name: str) -> str:
     path = Path(data_dir) / f".{name}"
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
-        return path.read_text().strip()
+        return path.read_text(encoding="utf-8").strip()
     value = base64.b64encode(secrets.token_bytes(32)).decode()
-    path.write_text(value)
+    path.write_text(value, encoding="utf-8")
     os.chmod(path, 0o600)
     return value
