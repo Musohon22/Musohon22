@@ -22,7 +22,7 @@ from .live import broker
 MODULES = [
     "auth", "org", "employees", "biometrics", "devices", "gateway", "attendance", "corrections", "shifts",
     "leaves", "reports", "users", "audit", "alerts", "notifications", "settings", "integrations", "portal",
-    "live", "platform", "billing", "roi", "dashboard", "system",
+    "live", "platform", "billing", "roi", "dashboard", "system", "passkeys",
 ]
 
 

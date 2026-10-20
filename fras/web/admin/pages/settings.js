@@ -4,7 +4,7 @@ import { fmtDate, fmtDateTime, fmtMoney } from '/assets/core/format.js';
 import { pageHead, orgTree, invalidateOrg, act } from './common.js';
 
 const SECTIONS = [
-  ['org', 'Tashkiliy tuzilma', 'org.read'], ['attendance_rules', 'Davomat qoidalari', 'settings.read'], ['biometric_policy', 'Biometrik siyosat', 'settings.read'],
+  ['org', 'Tashkiliy tuzilma', 'org.read'], ['attendance_rules', 'Davomat qoidalari', 'settings.read'], ['biometric_policy', 'Biometrik siyosat', 'settings.read'], ['self_checkin', 'Noutbukdan qayd (Windows Hello)', 'employee.read'],
   ['retention', 'Saqlash muddatlari', 'settings.read'], ['notifications', 'Bildirishnomalar', 'settings.read'], ['locale', 'Til va vaqt', 'settings.read'],
   ['integrations', 'Integratsiyalar va API', 'integration.manage'], ['backup', 'Backup va eksport', 'settings.read'], ['billing', 'Obuna va to\'lovlar', 'billing.read'], ['support', 'Texnik yordam', 'settings.read'],
 ];
@@ -14,7 +14,7 @@ export async function render(main, params, app) {
   const nav = h('nav', { class: 'card', style: { padding: '8px', alignSelf: 'start' } }, SECTIONS.filter(([, , p]) => app.can(p)).map(([k, l]) => h('a', { class: `nav ${k === section ? 'active' : ''}`, href: `/app/settings/${k}`, 'data-link': '', style: { display: 'block', padding: '8px 10px', borderRadius: '6px', background: k === section ? 'var(--c-primary-soft)' : '', fontWeight: k === section ? 600 : 400 } }, l)));
   const body = h('div', { style: { minWidth: 0 } });
   main.append(pageHead('Sozlamalar'), h('div', { style: { display: 'grid', gridTemplateColumns: '240px 1fr', gap: '16px' }, class: 'profile-grid' }, nav, body));
-  const fn = { org: orgSection, attendance_rules: rulesSection, biometric_policy: bioSection, retention: retentionSection, notifications: notifSection, locale: localeSection, integrations: integrationsSection, backup: backupSection, billing: billingSection, support: supportSection }[section];
+  const fn = { org: orgSection, attendance_rules: rulesSection, biometric_policy: bioSection, self_checkin: selfCheckinSection, retention: retentionSection, notifications: notifSection, locale: localeSection, integrations: integrationsSection, backup: backupSection, billing: billingSection, support: supportSection }[section];
   if (fn) await fn(body, app); else body.appendChild(emptyState({ title: "Bo'lim topilmadi" }));
 }
 
@@ -73,6 +73,42 @@ async function rulesSection(box, app) {
       catch (e) { showError(e); } })();
     } }), app.can('settings.attendance_rules') ? btn('Saqlash', { onClick: async () => { if (await act(() => app.api.put('/api/v1/settings/attendance_rules', { value: f.values() }), "Saqlandi. Qoida keyingi hisob-kitoblarga qo'llanadi.", f)) { clear(box); rulesSection(box, app); } } }) : null), simBox));
   const fmt = (val, k) => (k.endsWith('_min') ? (val / 60).toFixed(1) : val);
+}
+
+// ---------------------------------------------------------------- laptop self check-in (passkeys)
+async function selfCheckinSection(box, app) {
+  if (app.can('settings.read')) {
+    const cur = await versionHeader(app, 'self_checkin', box);
+    const v = cur.value;
+    const f = form([{ name: 'enabled', label: "Xodimlarga noutbukdan Windows Hello bilan qayd qilishga ruxsat berish", type: 'checkbox' },
+      { name: 'allowed_networks', label: "Korxona tarmoqlari (har qatorda bitta CIDR)", type: 'textarea', rows: 3, full: true, help: "Masalan 10.20.0.0/16 yoki ofisning tashqi IP manzili 203.0.113.7/32. Bo'sh bo'lsa — har qanday qayd \"tarmoqdan tashqarida\" hisoblanadi." },
+      { name: 'outside_network', label: 'Tarmoqdan tashqarida', type: 'select', options: [['deny', 'Rad etish'], ['review', 'Yozish, lekin HR tekshiruviga yuborish']] },
+      { name: 'max_per_employee', label: 'Bir xodimga noutbuklar soni', type: 'number', min: 1, max: 5 },
+      { name: 'require_approval', label: 'Har bir yangi noutbukni HR tasdiqlaydi', type: 'checkbox' },
+      { name: 'device_bound_only', label: "Faqat qurilmaga bog'langan kalitlar (bulutda sinxronlanadigan passkey'lar rad etiladi)", type: 'checkbox' }],
+    { ...v, allowed_networks: v.allowed_networks.join('\n') });
+    box.append(h('div', { class: 'card stack' },
+      h('div', { class: 'note info small' }, "Windows Hello odamni noutbukning o'zida tekshiradi (IR kamera bilan yuz, barmoq izi yoki Hello PIN) va serverga faqat kriptografik imzo yuboradi. Server yuz yoki PIN ishlatilganini ajrata olmaydi — shuning uchun tarmoq cheklovi va HR tasdig'i muhim."),
+      f.el, app.can('settings.attendance_rules') ? h('div', { class: 'btn-bar' }, btn('Saqlash', { onClick: async () => {
+        const val = f.values();
+        val.allowed_networks = (val.allowed_networks || '').split(/[\n,]+/).map((x) => x.trim()).filter(Boolean);
+        if (await act(() => app.api.put('/api/v1/settings/self_checkin', { value: val }), 'Saqlandi', f)) { clear(box); selfCheckinSection(box, app); }
+      } })) : null));
+  }
+  const list = h('div');
+  box.append(h('h2', { style: { marginTop: '24px' } }, 'Ulangan noutbuklar'), list);
+  const STATUS = { active: ['Faol', 'success'], pending: ['Tasdiq kutilmoqda', 'warning'], revoked: ["O'chirilgan", ''] };
+  const refresh = () => load(list, () => app.api.get('/api/v1/passkeys'), (r) => table({ rows: r.items, empty: emptyState({ icon: '💻', title: "Ulangan noutbuk yo'q" }), columns: [
+    { key: 'employee', label: 'Xodim', render: (c) => h('a', { href: `/app/employees/${c.employee_id}`, 'data-link': '' }, `${c.employee} · ${c.personnel_no}`) },
+    { key: 'label', label: 'Qurilma', render: (c) => h('div', {}, c.label, h('div', { class: 'caption' }, c.authenticator)) },
+    { key: 'status', label: 'Holat', render: (c) => badge(...(STATUS[c.status] || [c.status, ''])) },
+    { key: 'created_at', label: 'Ulangan', render: (c) => h('div', {}, fmtDateTime(c.created_at, app.tz), h('div', { class: 'caption mono' }, c.created_ip || '')) },
+    { key: 'last_used_at', label: 'Oxirgi qayd', render: (c) => (c.last_used_at ? fmtDateTime(c.last_used_at, app.tz) : '—') },
+    { key: 'act', label: '', render: (c) => (app.can('employee.write') ? h('div', { class: 'row' },
+      c.status === 'pending' ? btn('Tasdiqlash', { size: 's', onClick: async () => { if (await act(() => app.api.post(`/api/v1/passkeys/${c.id}/approve`), 'Tasdiqlandi')) refresh(); } }) : null,
+      btn("O'chirish", { variant: 'tertiary', size: 's', onClick: () => confirmDanger({ title: `${c.employee}: ${c.label}`, consequences: ["Bu noutbukdan qayd qilib bo'lmay qoladi", 'Amal auditga yoziladi'], reasonMin: 3, okLabel: "O'chirish",
+        onConfirm: async ({ reason }) => { await app.api.post(`/api/v1/passkeys/${c.id}/revoke`, { reason }); toast("O'chirildi", 'success'); refresh(); } }) })) : '') }] }));
+  await refresh();
 }
 
 async function bioSection(box, app) {

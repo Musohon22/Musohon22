@@ -4,7 +4,7 @@ import { fmtDate, fmtTime, fmtDateTime, fmtDuration, todayISO, addDays, daysBetw
 import { pageHead, departments, employeePicker, act, REASONS } from './common.js';
 
 const RESULT_OPTS = [['', 'Barcha natijalar'], ['accepted', 'Qabul'], ['review', 'Tekshiruvda'], ['unknown', "Noma'lum"], ['pad', 'Soxta tasvir'], ['denied', "Ruxsat yo'q"], ['duplicate', 'Takroriy']];
-const METHOD_OPTS = [['', 'Barcha usullar'], ['face', 'Yuz'], ['card_pin', 'Karta/PIN'], ['qr', 'QR'], ['manual', "Qo'lda"], ['guard_override', 'Qo\'riqchi']];
+const METHOD_OPTS = [['', 'Barcha usullar'], ['face', 'Yuz'], ['card_pin', 'Karta/PIN'], ['qr', 'QR'], ['passkey', 'Noutbuk (Windows Hello)'], ['manual', "Qo'lda"], ['guard_override', 'Qo\'riqchi']];
 
 // ---------------------------------------------------------------- SCR-30 journal
 export async function renderJournal(main, params, app) {
@@ -62,7 +62,7 @@ export async function renderJournal(main, params, app) {
           { key: 'name', label: 'Xodim', render: (e) => (e.employee_id ? h('span', {}, `${e.last_name} ${e.first_name}`, h('span', { class: 'caption' }, ` · ${e.personnel_no}`)) : h('span', { class: 'muted' }, "Noma'lum shaxs")) },
           { key: 'direction', label: "Yo'n.", render: (e) => (e.direction === 'in' ? '→' : '←') },
           { key: 'access_point_name', label: 'Darvoza' }, { key: 'device_name', label: 'Qurilma' },
-          { key: 'method', label: 'Usul', render: (e) => ({ face: 'Yuz', card_pin: 'Karta/PIN', qr: 'QR', manual: "Qo'lda", guard_override: "Qo'riqchi" }[e.method] || e.method) },
+          { key: 'method', label: 'Usul', render: (e) => ({ face: 'Yuz', card_pin: 'Karta/PIN', passkey: 'Windows Hello', qr: 'QR', manual: "Qo'lda", guard_override: "Qo'riqchi" }[e.method] || e.method) },
           { key: 'result', label: 'Natija', render: (e) => statusBadge(e.result) },
           { key: 'confidence', label: 'Ishonch', render: (e) => (e.confidence ? h('span', { title: e.score !== undefined ? `score ${e.score}` : '' }, { high: 'Yuqori', medium: "O'rta", low: 'Past' }[e.confidence]) : '—') },
           { key: 'review_status', label: 'Tekshiruv', render: (e) => (e.review_status === 'none' ? '—' : statusBadge(e.review_status)) },

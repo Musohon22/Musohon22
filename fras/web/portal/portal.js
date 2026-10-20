@@ -139,6 +139,7 @@ async function renderHome(main) {
     return [h('div', { class: 'portal-hello' }, h('h1', {}, `Salom, ${r.employee.name.split(' ')[0]}!`),
       h('div', { class: 'caption' }, `${r.employee.personnel_no} · ${r.employee.department} · ${r.employee.site}`)),
     bioNotice(r.employee.biometric_status),
+    helloCheckinCard(),
     todayCard,
     h('div', { class: 'card stack' }, h('h3', {}, 'Keyingi smena'), ns
       ? h('div', {}, h('strong', {}, `${fmtDate(ns.date)} (${WEEKDAYS[weekday(ns.date)]})`), h('div', {}, `${ns.name}: ${ns.start}–${ns.end}`))
@@ -332,6 +333,7 @@ async function renderProfile(main) {
       try { await app.api.post('/api/v1/me/password', { current: cur.value, new: nw.value }, { idempotent: false }); cur.value = nw.value = ''; toast("Parol o'zgartirildi", 'success'); }
       catch (er) { if (er.code === 'PASSWORD_MISMATCH') fc.setError("Joriy parol noto'g'ri"); else if (er.code === 'PASSWORD_WEAK' || er.status === 422) fn.setError('Parol talabga javob bermaydi'); else showError(er); }
     } })),
+    passkeyBlock(),
     consentBlock(e),
     h('div', { class: 'card stack', style: { marginTop: '12px' } }, h('h3', {}, "Shaxsiy ma'lumotlar"),
       h('p', { class: 'small' }, "Yuz tasviringizdan faqat matematik shablon saqlanadi va faqat davomat uchun ishlatiladi. Ishdan ketganingizdan so'ng belgilangan muddatda o'chiriladi. Batafsil — korxona maxfiylik siyosatida."),
@@ -356,6 +358,117 @@ function consentBlock(e) {
         h('ul', {}, h('li', {}, "Yuz shabloningiz darhol o'chiriladi"), h('li', {}, 'Terminallar sizni yuz orqali tanimaydi'), h('li', {}, 'HR sizga karta/PIN beradi')), ok),
       footer: [btn('Bekor', { variant: 'tertiary', onClick: () => m.close() }), confirmBtn] });
     } }));
+  return box;
+}
+
+// ---------------------------------------------------------------- laptop check-in with Windows Hello (passkey)
+// Windows Hello checks the person on the laptop (IR face camera, fingerprint or Hello PIN) and signs the
+// server's one-time challenge with a key kept in the laptop's TPM. The face itself never leaves the laptop.
+const toBuf = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
+const toB64u = (b) => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+async function helloAvailable() {
+  try { return !!window.PublicKeyCredential && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }
+  catch { return false; }
+}
+
+function helloError(e) {
+  if (e?.name === 'NotAllowedError') return "Bekor qilindi yoki vaqt tugadi. Qaytadan urinib ko'ring.";
+  if (e?.name === 'InvalidStateError') return "Bu noutbuk allaqachon ulangan.";
+  if (e?.name === 'SecurityError') return "Xavfsizlik xatosi: sahifa korxona manzilidan (HTTPS) ochilishi kerak.";
+  return errorText(e);
+}
+
+const CHECKIN_ERRORS = {
+  NO_ACTIVE_PASSKEY: "Bu noutbuk hali HR tomonidan tasdiqlanmagan.", PASSKEY_NOT_ACTIVE: "Bu noutbuk tasdiqlanmagan yoki o'chirilgan.",
+  PASSKEY_CLONED: "Xavfsizlik sababli bu noutbuk kaliti bloklandi. HR bilan bog'laning.", WEBAUTHN_UV_REQUIRED: "Windows Hello sizni tasdiqlamadi.",
+  WEBAUTHN_CHALLENGE: "So'rov eskirdi — qaytadan bosing.", SELF_CHECKIN_DISABLED: "Korxona noutbukdan qayd qilishni yoqmagan.",
+};
+
+function helloCheckinCard() {
+  const box = h('div', { class: 'card stack', hidden: true });
+  (async () => {
+    let r; try { r = await app.api.get('/api/v1/portal/passkeys'); } catch { return; }
+    if (!r.policy.enabled) return;
+    box.hidden = false;
+    const active = r.items.filter((x) => x.status === 'active');
+    const status = h('div', { role: 'status', 'aria-live': 'polite' });
+    box.append(h('div', { class: 'row' }, h('h3', {}, 'Noutbukdan qayd qilish'), h('span', { style: { flex: 1 } }), h('span', { class: 'badge info' }, 'Windows Hello')));
+    if (!(await helloAvailable())) {
+      box.append(h('p', { class: 'muted small' }, "Bu qurilmada Windows Hello (yoki boshqa ichki autentifikator) topilmadi. Windows sozlamalarida Hello'ni yoqing yoki terminaldan foydalaning."));
+      return;
+    }
+    if (!active.length) {
+      const pending = r.items.some((x) => x.status === 'pending');
+      box.append(h('p', { class: 'muted small' }, pending ? "Noutbukingiz HR tasdig'ini kutmoqda." : "Avval shu noutbukni profilingizga ulang."),
+        pending ? null : h('a', { href: '/me/profile', 'data-link': '' }, 'Profil → Windows Hello →'));
+      return;
+    }
+    if (r.policy.networks_configured && !r.policy.on_office_network) {
+      box.append(h('div', { class: 'note warning small' }, r.policy.outside_network === 'deny'
+        ? "Siz korxona tarmog'ida emassiz — bu yerdan qayd qilib bo'lmaydi." : "Siz korxona tarmog'ida emassiz — qayd HR tekshiruviga tushadi."));
+    }
+    const go = (direction) => async () => {
+      status.className = ''; status.textContent = 'Windows Hello oynasiga qarang…';
+      try {
+        const opts = await app.api.post('/api/v1/portal/checkin/options', { direction }, { idempotent: false });
+        const cred = await navigator.credentials.get({ publicKey: { challenge: toBuf(opts.challenge), rpId: opts.rpId, timeout: opts.timeout,
+          userVerification: 'required', allowCredentials: opts.allowCredentials.map((c) => ({ type: 'public-key', id: toBuf(c.id), transports: c.transports })) } });
+        const res = await app.api.post('/api/v1/portal/checkin', { credential_id: toB64u(cred.rawId), client_data_json: toB64u(cred.response.clientDataJSON),
+          authenticator_data: toB64u(cred.response.authenticatorData), signature: toB64u(cred.response.signature) }, { idempotent: false });
+        const kind = { accepted: 'success', duplicate: 'info', review: 'warning', denied: 'danger' }[res.result];
+        status.className = `note ${kind}`; status.textContent = `${res.message} · ${fmtTime(res.captured_at, app.tz)}`;
+        app.home = null;
+      } catch (e) {
+        status.className = 'note danger';
+        status.textContent = e.code ? (CHECKIN_ERRORS[e.code] || errorText(e)) : helloError(e);
+      }
+    };
+    box.append(h('div', { class: 'portal-actions' }, btn('→ Kirish', { size: 'l', onClick: go('in') }), btn('← Chiqish', { variant: 'secondary', size: 'l', onClick: go('out') })),
+      status, h('div', { class: 'caption' }, "Yuzingizni Windows Hello noutbukning o'zida tekshiradi; serverga rasm yuborilmaydi."));
+  })();
+  return box;
+}
+
+function passkeyBlock() {
+  const box = h('div', { class: 'card stack', style: { marginTop: '12px' } });
+  const draw = async () => {
+    clear(box).append(h('h3', {}, 'Windows Hello (noutbuk orqali qayd)'));
+    let r; try { r = await app.api.get('/api/v1/portal/passkeys'); } catch (e) { box.append(h('div', { class: 'note danger' }, errorText(e))); return; }
+    if (!r.policy.enabled) { box.append(h('p', { class: 'muted small' }, "Korxonangiz noutbukdan qayd qilishni hali yoqmagan.")); return; }
+    box.append(h('p', { class: 'small' }, "Shu noutbukni ulasangiz, Windows Hello (yuz, barmoq izi yoki PIN) bilan kirish/chiqishni qayd qila olasiz. Kalit faqat shu noutbukda saqlanadi."),
+      r.policy.require_approval ? h('div', { class: 'caption' }, "Yangi noutbukni HR tasdiqlaydi.") : null);
+    const STATUS = { active: ['Faol', 'success'], pending: ['Tasdiq kutilmoqda', 'warning'] };
+    if (r.items.length) {
+      box.append(h('div', { class: 'stack' }, r.items.map((c) => h('div', { class: 'row', style: { borderTop: '1px solid var(--border)', paddingTop: '8px' } },
+        h('div', { style: { flex: 1, minWidth: 0 } }, h('strong', {}, c.label), h('div', { class: 'caption' }, `${c.authenticator} · ulangan ${fmtDate(c.created_at)}${c.last_used_at ? ` · oxirgi ${fmtDate(c.last_used_at)}` : ''}`)),
+        h('span', { class: `badge ${STATUS[c.status]?.[1] || ''}` }, STATUS[c.status]?.[0] || c.status),
+        btn("O'chirish", { variant: 'tertiary', size: 's', onClick: async () => {
+          if (!window.confirm(`"${c.label}" o'chirilsinmi? Bu noutbukdan qayd qilib bo'lmay qoladi.`)) return;
+          try { await app.api.del(`/api/v1/portal/passkeys/${c.id}`); toast("O'chirildi", 'success'); draw(); } catch (e) { showError(e); }
+        } })))));
+    }
+    if (!(await helloAvailable())) { box.append(h('div', { class: 'note warning small' }, "Bu qurilmada Windows Hello topilmadi. Windows sozlamalari → Hisoblar → Kirish parametrlari → Windows Hello'ni yoqing.")); return; }
+    if (r.policy.networks_configured && !r.policy.on_office_network) { box.append(h('div', { class: 'note warning small' }, "Noutbukni faqat korxona tarmog'ida ulash mumkin.")); return; }
+    const label = input({ value: 'Ish noutbuki', maxlength: 60 });
+    box.append(field({ label: 'Qurilma nomi', input: label }), btn('Shu noutbukni ulash', { onClick: async () => {
+      try {
+        const o = await app.api.post('/api/v1/portal/passkeys/options', {}, { idempotent: false });
+        const cred = await navigator.credentials.create({ publicKey: { ...o, challenge: toBuf(o.challenge), user: { ...o.user, id: toBuf(o.user.id) },
+          excludeCredentials: o.excludeCredentials.map((c) => ({ type: 'public-key', id: toBuf(c.id) })) } });
+        const res = await app.api.post('/api/v1/portal/passkeys', { credential_id: toB64u(cred.rawId), client_data_json: toB64u(cred.response.clientDataJSON),
+          attestation_object: toB64u(cred.response.attestationObject), label: label.value || 'Noutbuk' }, { idempotent: false });
+        toast(res.status === 'pending' ? "Noutbuk ulandi. HR tasdiqlagach qayd qila olasiz." : 'Noutbuk ulandi', 'success', { timeout: 8000 });
+        draw();
+      } catch (e) {
+        const msg = { PASSKEY_SYNCED_NOT_ALLOWED: "Bu passkey bulutda sinxronlanadi (telefon/parol menejeri). Faqat shu noutbukdagi Windows Hello qabul qilinadi.",
+          OUTSIDE_OFFICE_NETWORK: "Noutbukni korxona tarmog'ida ulang.", PASSKEY_LIMIT: "Qurilmalar soni chegarasiga yetdingiz — eskisini o'chiring.",
+          WEBAUTHN_UV_REQUIRED: "Windows Hello foydalanuvchini tasdiqlamadi." }[e.code];
+        toast(msg || (e.code ? errorText(e) : helloError(e)), 'error', { timeout: 8000 });
+      }
+    } }));
+  };
+  draw();
   return box;
 }
 

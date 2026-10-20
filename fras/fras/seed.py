@@ -260,6 +260,10 @@ def seed_demo(settings: Settings, database: Database, employees: int = 60, days:
             _user(conn, tenant_id, portal_emp["personnel_no"].lower(), f"{portal_emp['last_name']} {portal_emp['first_name']}",
                   "employee", "self", portal_emp["id"], employee_id=portal_emp["id"])
 
+        # laptop check-in with Windows Hello: on for the demo, "office network" = this machine
+        _ok(hr.put("/api/v1/settings/self_checkin", {"value": {"enabled": True, "allowed_networks": ["127.0.0.0/8", "::1/128"],
+                                                             "outside_network": "review", "require_approval": True}}))
+
         # ROI baseline for the in-app ROI dashboard
         _ok(admin.put("/api/v1/roi/baseline", {"inputs": {"employees": employees, "payroll_monthly": employees * 350,
                                                           "hr_hour_cost": 4, "hr_hours_now": 60, "fix_hours_now": 25,

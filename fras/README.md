@@ -70,6 +70,26 @@ biometrik rozilik/ro'yxatdan o'tish/dublikat, billing bosqichlari, baholash skri
 | `FRAS_HEARTBEAT_OFFLINE_S` | Qurilma necha soniyadan so'ng offline hisoblanadi (90) |
 | `FRAS_DEV_RELAX_MFA` | Faqat demo/dev: imtiyozli rollar uchun MFA talabini o'chiradi |
 
+## Noutbukdan qayd qilish (Windows Hello / passkey)
+
+Xodim portalida (`/me/` → Profil) xodim o'z noutbukini ulaydi, HR tasdiqlaydi, so'ng bosh sahifada
+«Kirish / Chiqish» tugmasi Windows Hello oynasini ochadi. Hello odamni noutbukning o'zida tekshiradi
+(IR kamerali yuz — oddiy rasm bilan aldab bo'lmaydigan turi, barmoq izi yoki Hello PIN) va TPM'dagi kalit
+bilan serverning bir martalik so'rovini imzolaydi. Server yuz rasmini ko'rmaydi.
+
+Cheklovlar va himoya:
+- WebAuthn protokoli Hello yuzmi yoki PIN ishlatganini aytmaydi — buni server majburlay olmaydi.
+  Faqat yuzni talab qilish kerak bo'lsa, buni Windows Hello for Business guruh siyosati orqali qilish kerak.
+- Faqat qurilmaga bog'langan kalitlar qabul qilinadi (telefon/bulutda sinxronlanadigan passkey'lar — yo'q).
+- Har bir yangi noutbukni HR tasdiqlaydi; o'z noutbukini o'zi tasdiqlab bo'lmaydi.
+- Korxona tarmoqlari (CIDR) ro'yxatidan tashqarida qayd rad etiladi yoki HR tekshiruviga tushadi; ulash faqat
+  korxona tarmog'ida.
+- Imzo hisoblagichi orqaga ketsa (kalit nusxalangan) — kalit bloklanadi va xavfsizlik ogohlantirishi chiqadi.
+- Brauzer talabi: HTTPS (yoki `localhost`); `FRAS_PUBLIC_URL` sahifa ochiladigan manzil bilan bir xil bo'lishi kerak
+  (RP ID va origin shundan olinadi).
+
+Sozlash: Boshqaruv paneli → Sozlamalar → «Noutbukdan qayd (Windows Hello)».
+
 ## Aniqlikni o'lchash
 
 ```bash

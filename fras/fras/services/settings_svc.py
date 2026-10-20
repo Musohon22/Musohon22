@@ -50,6 +50,14 @@ DEFAULTS: dict[str, dict] = {
         "quiet_hours": {"from": "22:00", "to": "07:00"},
     },
     "locale": {"default_language": "uz", "date_format": "DD.MM.YYYY", "week_start": 1},
+    "self_checkin": {
+        "enabled": False,                  # laptop check-in with a passkey (Windows Hello); off until HR opts in
+        "allowed_networks": [],            # office CIDRs; empty = every check-in counts as "outside"
+        "outside_network": "deny",         # deny | review — what happens outside those networks
+        "require_approval": True,          # HR approves each newly registered laptop
+        "device_bound_only": True,         # refuse synced passkeys (phone/cloud copies on other devices)
+        "max_per_employee": 2,
+    },
 }
 
 # Minimums that settings may not go below (legal floor) [TAXMIN-11]

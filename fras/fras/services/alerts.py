@@ -17,6 +17,8 @@ TITLES = {
     "device_offline": "Qurilma offline",
     "audit_chain_broken": "Audit zanjiri buzilgan",
     "gate_opened": "Turniket masofadan ochildi",
+    "passkey_clone": "Passkey nusxalangan bo'lishi mumkin",
+    "self_checkin_outside": "Korxona tarmog'idan tashqarida qayd urinishi",
 }
 
 

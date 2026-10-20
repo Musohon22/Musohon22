@@ -19,6 +19,7 @@ PERM_BY_KEY = {
     "retention": "settings.retention",
     "notifications": "settings.notifications",
     "locale": "org.manage",
+    "self_checkin": "settings.attendance_rules",
 }
 
 
@@ -60,6 +61,19 @@ def _validate(key: str, value: dict) -> dict:
                                     field=k, minimum=floor)
         if int(merged["capture_days"]) > 90 or int(merged["enrollment_images_days"]) > 30:
             raise unprocessable("Captures are kept at most 90 days, enrolment images at most 30", "RETENTION_TOO_LONG")
+    if key == "self_checkin":
+        import ipaddress
+        nets = merged["allowed_networks"]
+        if not isinstance(nets, list) or len(nets) > 50:
+            raise unprocessable("allowed_networks must be a list (max 50)", "SETTINGS_INVALID", field="allowed_networks")
+        try:
+            merged["allowed_networks"] = [str(ipaddress.ip_network(n.strip(), strict=False)) for n in nets if n.strip()]
+        except (ValueError, AttributeError) as e:
+            raise unprocessable(f"Invalid network: {e}", "SETTINGS_INVALID", field="allowed_networks") from e
+        if merged["outside_network"] not in ("deny", "review"):
+            raise unprocessable("outside_network must be deny/review", "SETTINGS_INVALID")
+        if not 1 <= int(merged["max_per_employee"]) <= 5:
+            raise unprocessable("max_per_employee must be 1–5", "SETTINGS_INVALID")
     return merged
 
 
